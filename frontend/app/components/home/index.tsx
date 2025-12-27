@@ -1,0 +1,8 @@
+export { default as HeroSection } from "./HeroSection";
+export { default as AboutPreview } from "./AboutPreview";
+export { default as ServicesSection } from "./ServicesSection";
+export { default as WhyChooseUs } from "./WhyChooseUs";
+export { default as AchievementsStats } from "./AchievementsStats";
+export { default as ProjectsShowcase } from "./ProjectsShowcase";
+export { default as WorkingProcess } from "./WorkingProcess";
+export { default as TestimonialsAndPartners } from "./TestimonialsAndPartners";

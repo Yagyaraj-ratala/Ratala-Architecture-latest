@@ -1,0 +1,177 @@
+/* -------------------------------
+   GLOBAL IMPORTS
+---------------------------------- */
+
+/* Use local FontAwesome (faster, safer, no external request) */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* Tailwind core */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------
+   ROOT VARIABLES
+---------------------------------- */
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-sans: "Poppins", var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono, monospace);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* -------------------------------
+   GLOBAL BODY STYLE
+---------------------------------- */
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* -------------------------------
+   BACKGROUND ANIMATIONS
+---------------------------------- */
+
+/* Hero background section */
+.animated-bg {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: url("/6c506af0-fe1b-400c-908c-f5631a06cf9b.jpg") center/cover no-repeat;
+  animation: slowZoom 30s ease-in-out infinite alternate;
+  overflow: hidden;
+}
+
+.animated-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(0, 0, 0, 0.3),
+    rgba(255, 255, 255, 0.1)
+  );
+  mix-blend-mode: overlay;
+  animation: gradientMove 15s ease-in-out infinite alternate;
+  z-index: 1;
+}
+
+/* Zoom animation */
+@keyframes slowZoom {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+/* Soft gradient shimmer */
+@keyframes gradientMove {
+  0% {
+    opacity: 0.6;
+    transform: translate(-10%, -10%);
+  }
+  100% {
+    opacity: 0.9;
+    transform: translate(10%, 10%);
+  }
+}
+
+/* Tailwind-compatible utility classes */
+.animate-slowZoom {
+  animation: slowZoom 30s ease-in-out infinite alternate;
+}
+
+.animate-gradientMove {
+  animation: gradientMove 15s ease-in-out infinite alternate;
+}
+
+/* -------------------------------
+   CINEMATIC BACKGROUND
+---------------------------------- */
+
+@keyframes cinematicDrift {
+  0% {
+    transform: scale(1) translate(0, 0);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.05) translate(-10px, -5px);
+    filter: brightness(1.05);
+  }
+  50% {
+    transform: scale(1.1) translate(10px, -10px);
+    filter: brightness(1);
+  }
+  75% {
+    transform: scale(1.05) translate(5px, 10px);
+    filter: brightness(1.03);
+  }
+  100% {
+    transform: scale(1) translate(0, 0);
+    filter: brightness(1);
+  }
+}
+
+.animate-cinematicDrift {
+  animation: cinematicDrift 40s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Gradient sweep for overlays */
+@keyframes gradientLightSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradientLightSweep {
+  animation: gradientLightSweep 25s ease-in-out infinite;
+  background-size: 300% 300%;
+}
+
+/* -------------------------------
+   PAGE ELEMENT ANIMATIONS
+---------------------------------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
