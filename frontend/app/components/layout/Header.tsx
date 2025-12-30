@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   FaPhoneAlt,
@@ -11,6 +11,7 @@ import {
   FaBars,
   FaTimes,
   FaUser,
+  FaChevronDown,
 } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
 import dynamic from 'next/dynamic';
@@ -72,6 +73,12 @@ const Header: React.FC = () => {
   const [isSticky, setIsSticky] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(false);
+  const [isMobileProjectsOpen, setIsMobileProjectsOpen] = useState(false);
+  const [isProjectsClicked, setIsProjectsClicked] = useState(false);
+  const projectsButtonRef = useRef<HTMLButtonElement>(null);
+  const projectsDropdownRef = useRef<HTMLDivElement>(null);
+  const hoverLockRef = useRef(false);
   
 
   useEffect(() => {
@@ -88,38 +95,166 @@ const Header: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!isProjectsDropdownOpen || !isProjectsClicked) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const clickedOnButton = projectsButtonRef.current?.contains(target);
+      const clickedInDropdown = projectsDropdownRef.current?.contains(target);
+      const clickedInContainer = target.closest('.projects-dropdown-container');
+      
+      if (!clickedOnButton && !clickedInDropdown && !clickedInContainer) {
+        setIsProjectsDropdownOpen(false);
+        setIsProjectsClicked(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      window.addEventListener('click', handleClickOutside, true);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('click', handleClickOutside, true);
+    };
+  }, [isProjectsDropdownOpen, isProjectsClicked]);
+
   const handleLinkClick = () => setIsMobileMenuOpen(false);
 
   const navItems = [
     { href: "/", label: "Home", isActive: true },
     { href: "/about", label: "About Us" },
     { href: "/services", label: "Services" },
-    { href: "/projects", label: "Projects" },
     { href: "/cost-calculator", label: "Cost Calculator" },
     { href: "/blogs", label: "Blogs & Articles" },
     { href: "/contact", label: "Contact" },
     { href: "/login", label: "Admin" },
   ];
 
+  const projectsSubmenu = [
+    { href: "/projects/completed", label: "Completed Projects" },
+    { href: "/projects/ongoing", label: "Ongoing Projects" },
+  ];
+
   
 
-  const NavigationLinks = ({ isSticky = false }) => (
-    <ul className="flex flex-wrap items-center justify-center gap-4 md:gap-6 font-semibold text-gray-800 tracking-wide text-base lg:text-lg">
-      {navItems.map((item) => (
-        <li key={item.href}>
-          <Link
-            href={item.href}
-            className={`${
-              item.isActive ? "text-cyan-500" : "hover:text-cyan-500"
-            } transition-colors whitespace-nowrap px-2`}
-            onClick={handleLinkClick}
+  const NavigationLinks = ({ isSticky = false }) => {
+    const servicesIndex = navItems.findIndex(item => item.href === "/services");
+    const beforeProjects = navItems.slice(0, servicesIndex + 1);
+    const afterProjects = navItems.slice(servicesIndex + 1);
+
+    return (
+      <ul className="flex flex-wrap items-center justify-center gap-4 md:gap-6 font-semibold text-gray-800 tracking-wide text-base lg:text-lg">
+        {beforeProjects.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              className={`${
+                item.isActive ? "text-cyan-500" : "hover:text-cyan-500"
+              } transition-colors whitespace-nowrap px-2`}
+              onClick={handleLinkClick}
+            >
+              {item.label}
+            </Link>
+          </li>
+        ))}
+        <li 
+          className="relative group projects-dropdown-container"
+          style={{ paddingBottom: isProjectsDropdownOpen && isProjectsClicked ? '8px' : '0' }}
+          onMouseEnter={() => {
+            if (!isProjectsClicked && !hoverLockRef.current) {
+              setIsProjectsDropdownOpen(true);
+            }
+          }}
+          onMouseLeave={() => {
+            if (!isProjectsClicked && !hoverLockRef.current) {
+              setIsProjectsDropdownOpen(false);
+            }
+          }}
+        >
+          <button
+            ref={projectsButtonRef}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              hoverLockRef.current = true;
+              setTimeout(() => {
+                hoverLockRef.current = false;
+              }, 300);
+              
+              setIsProjectsDropdownOpen(prevOpen => {
+                const newOpen = !prevOpen;
+                setIsProjectsClicked(newOpen);
+                return newOpen;
+              });
+            }}
+            onMouseEnter={() => {
+              if (!isProjectsClicked && !hoverLockRef.current) {
+                setIsProjectsDropdownOpen(true);
+              }
+            }}
+            onMouseLeave={() => {
+              if (!isProjectsClicked && !hoverLockRef.current) {
+                setIsProjectsDropdownOpen(false);
+              }
+            }}
+            className="flex items-center gap-1 hover:text-cyan-500 transition-colors whitespace-nowrap px-2"
           >
-            {item.label}
-          </Link>
+            Projects
+            <FaChevronDown className={`text-xs transition-transform duration-200 ${isProjectsDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {isProjectsDropdownOpen && (
+            <div 
+              ref={projectsDropdownRef}
+              className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 projects-dropdown-menu"
+              onMouseEnter={() => {
+                setIsProjectsDropdownOpen(true);
+              }}
+              onMouseLeave={() => {
+                if (!isProjectsClicked && !hoverLockRef.current) {
+                  setIsProjectsDropdownOpen(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {projectsSubmenu.map((subItem) => (
+                <Link
+                  key={subItem.href}
+                  href={subItem.href}
+                  className="block px-4 py-2 text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLinkClick();
+                    setIsProjectsDropdownOpen(false);
+                    setIsProjectsClicked(false);
+                  }}
+                >
+                  {subItem.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </li>
-      ))}
-    </ul>
-  );
+        {afterProjects.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              className={`${
+                item.isActive ? "text-cyan-500" : "hover:text-cyan-500"
+              } transition-colors whitespace-nowrap px-2`}
+              onClick={handleLinkClick}
+            >
+              {item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   const MobileMenu = () => (
     <div className="lg:hidden bg-white shadow-lg border-t w-full mobile-menu">
@@ -142,6 +277,34 @@ const Header: React.FC = () => {
             </Link>
           </li>
         ))}
+        {/* Mobile Projects Dropdown */}
+        <li className="border-b border-gray-100">
+          <button
+            onClick={() => setIsMobileProjectsOpen(!isMobileProjectsOpen)}
+            className="flex items-center justify-between w-full py-4 text-gray-800 hover:text-cyan-500 text-lg transition-colors"
+          >
+            Projects
+            <FaChevronDown className={`text-xs transition-transform duration-200 ${isMobileProjectsOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {isMobileProjectsOpen && (
+            <ul className="pl-4 pb-2 space-y-1">
+              {projectsSubmenu.map((subItem) => (
+                <li key={subItem.href}>
+                  <Link
+                    href={subItem.href}
+                    className="block py-2 text-gray-600 hover:text-cyan-500 transition-colors"
+                    onClick={() => {
+                      handleLinkClick();
+                      setIsMobileProjectsOpen(false);
+                    }}
+                  >
+                    {subItem.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
       </ul>
     </div>
   );
