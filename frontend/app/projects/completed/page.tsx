@@ -14,73 +14,51 @@ interface CompletedProject {
   description: string;
 }
 
+interface ApiProject {
+  id: number;
+  status: string;
+  project_type: string;
+  title: string;
+  location: string;
+  description: string | null;
+  image_path: string | null;
+  completed_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function CompletedProjectsPage() {
   const [projects, setProjects] = useState<CompletedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<CompletedProject | null>(null);
 
-  // Sample completed projects data - you can replace this with API call
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setProjects([
-        {
-          id: 1,
-          title: "Luxury Villa - Kathmandu",
-          location: "Kathmandu, Nepal",
-          category: "Residential",
-          completionDate: "2024-01-15",
-          image: "/projects/ImageR1.jpg",
-          description: "A modern luxury villa featuring contemporary design with sustainable materials and smart home integration."
-        },
-        {
-          id: 2,
-          title: "Modern Corporate Office",
-          location: "Lalitpur, Nepal",
-          category: "Commercial",
-          completionDate: "2023-11-20",
-          image: "/projects/interior1.jpg",
-          description: "State-of-the-art corporate office space designed for productivity and employee well-being."
-        },
-        {
-          id: 3,
-          title: "Himalayan Resort Design",
-          location: "Pokhara, Nepal",
-          category: "Hospitality",
-          completionDate: "2023-09-10",
-          image: "/projects/interior3.jpg",
-          description: "Eco-friendly resort design blending traditional Nepali architecture with modern amenities."
-        },
-        {
-          id: 4,
-          title: "Elegant Home Renovation",
-          location: "Bhaktapur, Nepal",
-          category: "Renovation",
-          completionDate: "2023-08-05",
-          image: "/projects/ImageR3.jpg",
-          description: "Complete renovation of a heritage home preserving traditional elements while adding modern comforts."
-        },
-        {
-          id: 5,
-          title: "Sustainable Residential Complex",
-          location: "Kathmandu, Nepal",
-          category: "Residential",
-          completionDate: "2023-06-18",
-          image: "/projects/ImageR1.jpg",
-          description: "Green building residential complex with solar panels, rainwater harvesting, and energy-efficient design."
-        },
-        {
-          id: 6,
-          title: "Commercial Shopping Complex",
-          location: "Kathmandu, Nepal",
-          category: "Commercial",
-          completionDate: "2023-04-22",
-          image: "/projects/interior1.jpg",
-          description: "Modern shopping complex with innovative space planning and sustainable design features."
-        },
-      ]);
-      setIsLoading(false);
-    }, 500);
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('/api/admin/projects?status=completed');
+        if (!response.ok) throw new Error('Failed to fetch projects');
+        const data: ApiProject[] = await response.json();
+        
+        const mappedProjects: CompletedProject[] = data.map((project) => ({
+          id: project.id,
+          title: project.title,
+          location: project.location,
+          category: project.project_type.charAt(0).toUpperCase() + project.project_type.slice(1),
+          completionDate: project.completed_date || project.created_at,
+          image: project.image_path ? `/uploads/${project.image_path}` : '/projects/ImageR1.jpg',
+          description: project.description || 'No description available.'
+        }));
+        
+        setProjects(mappedProjects);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   if (isLoading) {
@@ -116,8 +94,9 @@ export default function CompletedProjectsPage() {
 
       {/* Projects Grid Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.map((project, index) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 30 }}
@@ -131,6 +110,9 @@ export default function CompletedProjectsPage() {
                   src={project.image}
                   alt={project.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.src = '/projects/ImageR1.jpg';
+                  }}
                 />
                 <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
                   <CheckCircle size={16} />
@@ -165,13 +147,14 @@ export default function CompletedProjectsPage() {
                 </p>
               </div>
             </motion.div>
-          ))}
-        </div>
-
-        {projects.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No completed projects available yet. Please check back later.</p>
+            ))}
           </div>
+        ) : (
+          !isLoading && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No projects available</p>
+            </div>
+          )
         )}
       </div>
 
@@ -201,6 +184,9 @@ export default function CompletedProjectsPage() {
                 src={selectedProject.image}
                 alt={selectedProject.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/projects/ImageR1.jpg';
+                }}
               />
               <div className="absolute bottom-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
                 <CheckCircle size={16} />
