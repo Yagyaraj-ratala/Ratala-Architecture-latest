@@ -16,85 +16,54 @@ interface OngoingProject {
   description: string;
 }
 
+interface ApiProject {
+  id: number;
+  status: string;
+  project_type: string;
+  title: string;
+  location: string;
+  description: string | null;
+  image_path: string | null;
+  start_date: string | null;
+  progress: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function OngoingProjectsPage() {
   const [projects, setProjects] = useState<OngoingProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<OngoingProject | null>(null);
 
-  // Sample ongoing projects data - you can replace this with API call
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setProjects([
-        {
-          id: 1,
-          title: "Modern Residential Complex",
-          location: "Kathmandu, Nepal",
-          category: "Residential",
-          startDate: "2024-02-01",
-          expectedCompletion: "2024-12-31",
-          progress: 65,
-          image: "/projects/ImageR1.jpg",
-          description: "A contemporary residential complex featuring sustainable design, smart home technology, and community spaces."
-        },
-        {
-          id: 2,
-          title: "Luxury Hotel & Resort",
-          location: "Pokhara, Nepal",
-          category: "Hospitality",
-          startDate: "2024-01-15",
-          expectedCompletion: "2025-03-30",
-          progress: 45,
-          image: "/projects/interior1.jpg",
-          description: "Premium hotel and resort development with eco-friendly architecture and world-class amenities."
-        },
-        {
-          id: 3,
-          title: "Commercial Office Tower",
-          location: "Lalitpur, Nepal",
-          category: "Commercial",
-          startDate: "2024-03-10",
-          expectedCompletion: "2025-06-15",
-          progress: 35,
-          image: "/projects/interior3.jpg",
-          description: "State-of-the-art commercial office tower with modern facilities and sustainable building practices."
-        },
-        {
-          id: 4,
-          title: "Heritage Building Restoration",
-          location: "Bhaktapur, Nepal",
-          category: "Renovation",
-          startDate: "2024-02-20",
-          expectedCompletion: "2024-11-30",
-          progress: 55,
-          image: "/projects/ImageR3.jpg",
-          description: "Careful restoration of a historic building preserving traditional architecture while adding modern functionality."
-        },
-        {
-          id: 5,
-          title: "Eco-Friendly Housing Project",
-          location: "Kathmandu, Nepal",
-          category: "Residential",
-          startDate: "2024-04-01",
-          expectedCompletion: "2025-02-28",
-          progress: 40,
-          image: "/projects/ImageR1.jpg",
-          description: "Sustainable housing development with solar energy, rainwater harvesting, and green building materials."
-        },
-        {
-          id: 6,
-          title: "Shopping Mall Complex",
-          location: "Kathmandu, Nepal",
-          category: "Commercial",
-          startDate: "2024-01-05",
-          expectedCompletion: "2025-01-20",
-          progress: 50,
-          image: "/projects/interior1.jpg",
-          description: "Modern shopping mall with innovative design, entertainment zones, and sustainable features."
-        },
-      ]);
-      setIsLoading(false);
-    }, 500);
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('/api/admin/projects?status=ongoing');
+        if (!response.ok) throw new Error('Failed to fetch projects');
+        const data: ApiProject[] = await response.json();
+        
+        const mappedProjects: OngoingProject[] = data.map((project) => ({
+          id: project.id,
+          title: project.title,
+          location: project.location,
+          category: project.project_type.charAt(0).toUpperCase() + project.project_type.slice(1),
+          startDate: project.start_date || project.created_at,
+          expectedCompletion: '', // Not available in API, can be calculated or left empty
+          progress: project.progress || 0,
+          image: project.image_path ? `/uploads/${project.image_path}` : '/projects/ImageR1.jpg',
+          description: project.description || 'No description available.'
+        }));
+        
+        setProjects(mappedProjects);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   if (isLoading) {
@@ -130,8 +99,9 @@ export default function OngoingProjectsPage() {
 
       {/* Projects Grid Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.map((project, index) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 30 }}
@@ -145,6 +115,9 @@ export default function OngoingProjectsPage() {
                   src={project.image}
                   alt={project.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.src = '/projects/ImageR1.jpg';
+                  }}
                 />
                 <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
                   <Clock size={16} />
@@ -195,13 +168,14 @@ export default function OngoingProjectsPage() {
                 </p>
               </div>
             </motion.div>
-          ))}
-        </div>
-
-        {projects.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No ongoing projects available at the moment. Please check back later.</p>
+            ))}
           </div>
+        ) : (
+          !isLoading && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No projects available</p>
+            </div>
+          )
         )}
       </div>
 
@@ -231,6 +205,9 @@ export default function OngoingProjectsPage() {
                 src={selectedProject.image}
                 alt={selectedProject.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/projects/ImageR1.jpg';
+                }}
               />
               <div className="absolute bottom-4 left-4 bg-orange-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
                 <Clock size={16} />
@@ -257,10 +234,12 @@ export default function OngoingProjectsPage() {
                   <Calendar size={18} className="text-gray-400" />
                   <span>Started: {new Date(selectedProject.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <TrendingUp size={18} className="text-gray-400" />
-                  <span>Expected: {new Date(selectedProject.expectedCompletion).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </div>
+                {selectedProject.expectedCompletion && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <TrendingUp size={18} className="text-gray-400" />
+                    <span>Expected: {new Date(selectedProject.expectedCompletion).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  </div>
+                )}
               </div>
 
               {/* Progress Section */}

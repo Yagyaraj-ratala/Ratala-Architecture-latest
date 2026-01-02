@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
-  database: 'Ratala_Architecture',
+  database: 'ratala_architecture',
   password: 'SYSTEM',
   port: 5432,
 });

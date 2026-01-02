@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiUpload, FiImage, FiTrash2 } from 'react-icons/fi';
+import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
 
-interface InteriorImage {
+interface Project {
   id: number;
-  image_description: string;
-  image_path: string;
+  status: 'ongoing' | 'completed';
+  project_type: 'residential' | 'commercial' | 'renovation' | 'hospitality';
+  title: string;
+  location: string;
+  description?: string | null;
+  image_path?: string | null;
+  start_date?: string | null;
+  completed_date?: string | null;
+  progress?: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface Quotation {
@@ -35,102 +43,161 @@ interface Contact {
 export default function AdminPage() {
   const router = useRouter();
   const [user] = useState({ name: 'Admin', email: 'admin@example.com' });
-  const [images, setImages] = useState<InteriorImage[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [reportVisible, setReportVisible] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'quotations' | 'contacts' | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'ongoing' | 'completed'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'residential' | 'commercial' | 'renovation' | 'hospitality'>('all');
+  
+  const [formData, setFormData] = useState({
+    status: 'ongoing' as 'ongoing' | 'completed',
+    project_type: 'residential' as 'residential' | 'commercial' | 'renovation' | 'hospitality',
+    title: '',
+    location: '',
+    description: '',
+    start_date: '',
+    completed_date: '',
+    progress: '0',
+    image: null as File | null,
+    delete_image: false
+  });
 
   useEffect(() => {
-    fetchInteriorImages();
-  }, []);
+    fetchProjects();
+  }, [filterStatus, filterType]);
 
-  const fetchInteriorImages = async () => {
+  const fetchProjects = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/interior-designs');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      let url = '/api/admin/projects';
+      const params = new URLSearchParams();
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterType !== 'all') params.append('type', filterType);
+      if (params.toString()) url += '?' + params.toString();
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch projects');
       const data = await response.json();
-      setImages(Array.isArray(data) ? data : []);
+      setProjects(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching images:', error);
-      alert('Failed to load images. Please check console for details.');
+      console.error('Error fetching projects:', error);
+      alert('Failed to load projects');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === 'image' && e.target instanceof HTMLInputElement && e.target.files) {
+      setFormData(prev => ({ ...prev, image: e.target.files?.[0] || null }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !description) {
-      alert('Please select a file and enter a description');
+    if (!formData.title || !formData.location) {
+      alert('Please fill in all required fields');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('image', selectedFile);
-    formData.append('description', description);
+    const submitData = new FormData();
+    Object.keys(formData).forEach(key => {
+      if (key === 'image' && formData.image) {
+        submitData.append('image', formData.image);
+      } else if (key !== 'image') {
+        submitData.append(key, (formData as any)[key]);
+      }
+    });
 
-    setIsUploading(true);
     try {
-      const response = await fetch('/api/admin/interior-designs', {
-        method: 'POST',
-        body: formData,
+      const url = editingProject 
+        ? `/api/admin/projects/${editingProject.id}`
+        : '/api/admin/projects';
+      const method = editingProject ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        body: submitData,
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Upload failed');
+        throw new Error(error.error || 'Failed to save project');
       }
 
-      setDescription('');
-      setSelectedFile(null);
-      if (e.target instanceof HTMLFormElement) {
-        e.target.reset();
-      }
-      fetchInteriorImages();
-      alert('Image uploaded successfully!');
+      alert(`Project ${editingProject ? 'updated' : 'created'} successfully!`);
+      resetForm();
+      fetchProjects();
     } catch (error) {
-      console.error('Upload error:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Upload failed'}`);
-    } finally {
-      setIsUploading(false);
+      console.error('Error saving project:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to save project'}`);
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      status: 'ongoing',
+      project_type: 'residential',
+      title: '',
+      location: '',
+      description: '',
+      start_date: '',
+      completed_date: '',
+      progress: '0',
+      image: null,
+      delete_image: false
+    });
+    setEditingProject(null);
+    setShowProjectForm(false);
+  };
+
+  const handleEdit = (project: Project) => {
+    setEditingProject(project);
+    setFormData({
+      status: project.status,
+      project_type: project.project_type,
+      title: project.title,
+      location: project.location,
+      description: project.description || '',
+      start_date: project.start_date || '',
+      completed_date: project.completed_date || '',
+      progress: project.progress?.toString() || '0',
+      image: null,
+      delete_image: false
+    });
+    setShowProjectForm(true);
+  };
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this image?')) {
+    if (!window.confirm('Are you sure you want to delete this project?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/admin/interior-designs/delete?id=${id}`, {
+      const response = await fetch(`/api/admin/projects/${id}`, {
         method: 'DELETE',
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete image');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete project');
       }
 
-      setImages(prevImages => prevImages.filter(img => img.id !== id));
-      alert('Image deleted successfully!');
+      alert('Project deleted successfully!');
+      fetchProjects();
     } catch (error) {
-      console.error('Error deleting image:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete image'}`);
+      console.error('Error deleting project:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete project'}`);
     }
   };
 
@@ -176,7 +243,6 @@ export default function AdminPage() {
       return;
     }
 
-    // default: quotations
     if (!quotations || quotations.length === 0) {
       alert('No quotation data to export');
       return;
@@ -209,10 +275,12 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
+  const ongoingCount = projects.filter(p => p.status === 'ongoing').length;
+  const completedCount = projects.filter(p => p.status === 'completed').length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
-        {/* Sidebar */}
         <div className="w-64 bg-white shadow-lg h-screen sticky top-40 flex flex-col z-10">
           <div className="p-4 border-b border-gray-200">
             <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
@@ -396,106 +464,302 @@ export default function AdminPage() {
             </div>
           ) : (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Welcome back, {user.name}!</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Project Management</h2>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowProjectForm(true);
+                }}
+                className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 flex items-center gap-2"
+              >
+                <FiPlus />
+                Add New Project
+              </button>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg p-6 text-white">
                 <h3 className="text-lg font-medium">Total Projects</h3>
-                <p className="text-3xl font-bold mt-2">24</p>
-                <p className="text-sm opacity-80 mt-1">+12% from last month</p>
+                <p className="text-3xl font-bold mt-2">{projects.length}</p>
               </div>
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-                <h3 className="text-lg font-medium">Active Users</h3>
-                <p className="text-3xl font-bold mt-2">1,243</p>
-                <p className="text-sm opacity-80 mt-1">+8.1% from last month</p>
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
+                <h3 className="text-lg font-medium">Ongoing Projects</h3>
+                <p className="text-3xl font-bold mt-2">{ongoingCount}</p>
               </div>
               <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-lg p-6 text-white">
-                <h3 className="text-lg font-medium">Total Designs</h3>
-                <p className="text-3xl font-bold mt-2">{images.length}</p>
-                <p className="text-sm opacity-80 mt-1">Interior designs</p>
+                <h3 className="text-lg font-medium">Completed Projects</h3>
+                <p className="text-3xl font-bold mt-2">{completedCount}</p>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload New Interior Design</h3>
-              <form onSubmit={handleUpload} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image Description</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="Enter image description"
-                    required
-                  />
+            {showProjectForm && (
+              <div className="bg-white p-6 rounded-lg shadow-md mb-8 border-2 border-cyan-500">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    {editingProject ? 'Edit Project' : 'Add New Project'}
+                  </h3>
+                  <button onClick={resetForm} className="text-gray-500 hover:text-gray-700">
+                    <FiX size={24} />
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Image</label>
-                  <div className="flex items-center space-x-4">
-                    <label className="flex-1 border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 transition-colors">
-                      <FiUpload className="w-6 h-6 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">
-                        {selectedFile ? selectedFile.name : 'Click to select an image'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                      <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                         required
-                      />
-                    </label>
+                      >
+                        <option value="ongoing">Ongoing</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Project Type *</label>
+                      <select
+                        name="project_type"
+                        value={formData.project_type}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        required
+                      >
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="renovation">Renovation</option>
+                        <option value="hospitality">Hospitality</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.status === 'ongoing' ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                          <input
+                            type="date"
+                            name="start_date"
+                            value={formData.start_date}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Progress (%)</label>
+                          <input
+                            type="number"
+                            name="progress"
+                            value={formData.progress}
+                            onChange={handleInputChange}
+                            min="0"
+                            max="100"
+                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Completed Date</label>
+                        <input
+                          type="date"
+                          name="completed_date"
+                          value={formData.completed_date}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={4}
+                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Project Image</label>
+                    {editingProject?.image_path && !formData.delete_image && (
+                      <div className="mb-2">
+                        <img src={`/uploads/${editingProject.image_path}`} alt={editingProject.title} className="h-32 w-auto rounded" />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, delete_image: true }))}
+                          className="mt-2 text-red-600 text-sm"
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      name="image"
+                      accept="image/*"
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div className="flex gap-2">
                     <button
                       type="submit"
-                      disabled={isUploading || !selectedFile || !description}
-                      className="bg-cyan-600 text-white px-6 py-2 rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                      className="bg-cyan-600 text-white px-6 py-2 rounded-md hover:bg-cyan-700"
                     >
-                      {isUploading ? 'Uploading...' : 'Upload'}
-                      <FiUpload className="ml-2" />
+                      {editingProject ? 'Update Project' : 'Create Project'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400"
+                    >
+                      Cancel
                     </button>
                   </div>
-                </div>
-              </form>
+                </form>
+              </div>
+            )}
 
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">Recent Uploads</h3>
-                {images.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {images.map((image) => (
-                      <div key={image.id} className="border rounded-lg overflow-hidden">
-                        <div className="h-40 bg-gray-100 relative">
-                          <img
-                            src={`/uploads/${image.image_path}`}
-                            alt={image.image_description}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            onClick={() => handleDelete(image.id)}
-                            className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
-                            title="Delete image"
-                          >
-                            <FiTrash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <div className="p-3">
-                          <p className="text-sm text-gray-700 truncate">{image.image_description}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(image.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                    <FiImage className="mx-auto h-12 w-12 text-gray-400" />
-                    <h4 className="mt-2 text-sm font-medium text-gray-900">No uploads yet</h4>
-                    <p className="mt-1 text-sm text-gray-500">Upload your first interior design image</p>
-                  </div>
-                )}
+            <div className="mb-4 flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                >
+                  <option value="all">All</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as any)}
+                  className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                >
+                  <option value="all">All</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="renovation">Renovation</option>
+                  <option value="hospitality">Hospitality</option>
+                </select>
               </div>
             </div>
+
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+              </div>
+            ) : projects.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        {filterStatus === 'ongoing' ? 'Start Date / Progress' : 'Completed Date'}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {projects.map((project) => (
+                      <tr key={project.id}>
+                        <td className="px-4 py-3">
+                          {project.image_path ? (
+                            <img src={`/uploads/${project.image_path}`} alt={project.title} className="h-16 w-24 object-cover rounded" />
+                          ) : (
+                            <div className="h-16 w-24 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            project.status === 'ongoing' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {project.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 capitalize">{project.project_type}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{project.title}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{project.location}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {project.status === 'ongoing' ? (
+                            <div>
+                              <div>{project.start_date ? new Date(project.start_date).toLocaleDateString() : '-'}</div>
+                              {project.progress !== null && (
+                                <div className="mt-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="bg-cyan-600 h-2 rounded-full" style={{ width: `${project.progress}%` }}></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500">{project.progress}%</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            project.completed_date ? new Date(project.completed_date).toLocaleDateString() : '-'
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(project)}
+                              className="text-cyan-600 hover:text-cyan-800"
+                              title="Edit"
+                            >
+                              <FiEdit />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(project.id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                <p className="text-gray-500">No projects found. Add your first project!</p>
+              </div>
+            )}
           </div>
           )}
         </main>
