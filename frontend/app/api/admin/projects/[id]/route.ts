@@ -36,13 +36,32 @@ export async function PUT(
     const startDate = formData.get('start_date') as string;
     const completedDate = formData.get('completed_date') as string;
     const progress = formData.get('progress') as string;
+    const plotArea = formData.get('plot_area') as string;
+    const plinthArea = formData.get('plinth_area') as string;
+    const buildUpArea = formData.get('build_up_area') as string;
     const file = formData.get('image') as File | null;
     const deleteImage = formData.get('delete_image') === 'true';
+
+    // Get multiple files
+    const drawingPhotos = formData.getAll('drawing_photos') as File[];
+    const projectPhotos = formData.getAll('project_photos') as File[];
+    const projectVideos = formData.getAll('project_videos') as File[];
+
+    // Validate file limits
+    if (drawingPhotos.length > 4) {
+      return NextResponse.json({ error: 'Maximum 4 drawing photos allowed' }, { status: 400 });
+    }
+    if (projectPhotos.length > 4) {
+      return NextResponse.json({ error: 'Maximum 4 project photos allowed' }, { status: 400 });
+    }
+    if (projectVideos.length > 2) {
+      return NextResponse.json({ error: 'Maximum 2 project videos allowed' }, { status: 400 });
+    }
 
     client = await pool.connect();
     
     let imagePath = null;
-    const existingProject = await client.query('SELECT image_path FROM projects WHERE id = $1', [id]);
+    const existingProject = await client.query('SELECT image_path, drawing_photos, project_photos, project_videos FROM projects WHERE id = $1', [id]);
     
     if (deleteImage && existingProject.rows[0]?.image_path) {
       try {
@@ -69,13 +88,78 @@ export async function PUT(
       imagePath = existingProject.rows[0]?.image_path || null;
     }
 
+    // Process drawing photos - keep existing or initialize empty array
+    let drawingPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.drawing_photos) 
+      ? [...existingProject.rows[0].drawing_photos] 
+      : (existingProject.rows[0]?.drawing_photos ? JSON.parse(JSON.stringify(existingProject.rows[0].drawing_photos)) : []);
+    
+    for (const photo of drawingPhotos) {
+      if (photo instanceof File && photo.size > 0) {
+        const fileName = generateFileName(photo.name);
+        const bytes = await photo.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const filePath = join(uploadDir, fileName);
+        await writeFile(filePath, buffer);
+        drawingPhotoPaths.push(fileName);
+        // Limit to 4
+        if (drawingPhotoPaths.length > 4) {
+          drawingPhotoPaths = drawingPhotoPaths.slice(-4);
+        }
+      }
+    }
+
+    // Process project photos - keep existing or initialize empty array
+    let projectPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_photos) 
+      ? [...existingProject.rows[0].project_photos] 
+      : (existingProject.rows[0]?.project_photos ? JSON.parse(JSON.stringify(existingProject.rows[0].project_photos)) : []);
+    
+    for (const photo of projectPhotos) {
+      if (photo instanceof File && photo.size > 0) {
+        const fileName = generateFileName(photo.name);
+        const bytes = await photo.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const filePath = join(uploadDir, fileName);
+        await writeFile(filePath, buffer);
+        projectPhotoPaths.push(fileName);
+        // Limit to 4
+        if (projectPhotoPaths.length > 4) {
+          projectPhotoPaths = projectPhotoPaths.slice(-4);
+        }
+      }
+    }
+
+    // Process project videos - keep existing or initialize empty array
+    let projectVideoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_videos) 
+      ? [...existingProject.rows[0].project_videos] 
+      : (existingProject.rows[0]?.project_videos ? JSON.parse(JSON.stringify(existingProject.rows[0].project_videos)) : []);
+    
+    for (const video of projectVideos) {
+      if (video instanceof File && video.size > 0) {
+        const fileName = generateFileName(video.name);
+        const bytes = await video.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const filePath = join(uploadDir, fileName);
+        await writeFile(filePath, buffer);
+        projectVideoPaths.push(fileName);
+        // Limit to 2
+        if (projectVideoPaths.length > 2) {
+          projectVideoPaths = projectVideoPaths.slice(-2);
+        }
+      }
+    }
+
     const progressValue = status === 'ongoing' && progress ? parseInt(progress) : null;
+    const plotAreaValue = plotArea ? parseFloat(plotArea) : null;
+    const plinthAreaValue = plinthArea ? parseFloat(plinthArea) : null;
+    const buildUpAreaValue = buildUpArea ? parseFloat(buildUpArea) : null;
     
     const result = await client.query(
       `UPDATE projects 
        SET status = $1, project_type = $2, title = $3, location = $4, description = $5, 
-           image_path = $6, start_date = $7, completed_date = $8, progress = $9, updated_at = NOW()
-       WHERE id = $10
+           image_path = $6, start_date = $7, completed_date = $8, progress = $9, 
+           plot_area = $10, plinth_area = $11, build_up_area = $12, 
+           drawing_photos = $13, project_photos = $14, project_videos = $15, updated_at = NOW()
+       WHERE id = $16
        RETURNING *`,
       [
         status,
@@ -87,6 +171,12 @@ export async function PUT(
         startDate || null,
         completedDate || null,
         progressValue,
+        plotAreaValue,
+        plinthAreaValue,
+        buildUpAreaValue,
+        JSON.stringify(drawingPhotoPaths),
+        JSON.stringify(projectPhotoPaths),
+        JSON.stringify(projectVideoPaths),
         id
       ]
     );

@@ -15,6 +15,12 @@ interface Project {
   start_date?: string | null;
   completed_date?: string | null;
   progress?: number | null;
+  plot_area?: number | null;
+  plinth_area?: number | null;
+  build_up_area?: number | null;
+  drawing_photos?: string[] | null;
+  project_photos?: string[] | null;
+  project_videos?: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,9 +71,16 @@ export default function AdminPage() {
     start_date: '',
     completed_date: '',
     progress: '0',
+    plot_area: '',
+    plinth_area: '',
+    build_up_area: '',
     image: null as File | null,
     delete_image: false
   });
+
+  const [drawingPhotos, setDrawingPhotos] = useState<File[]>([]);
+  const [projectPhotos, setProjectPhotos] = useState<File[]>([]);
+  const [projectVideos, setProjectVideos] = useState<File[]>([]);
 
   useEffect(() => {
     fetchProjects();
@@ -98,6 +111,15 @@ export default function AdminPage() {
     const { name, value } = e.target;
     if (name === 'image' && e.target instanceof HTMLInputElement && e.target.files) {
       setFormData(prev => ({ ...prev, image: e.target.files?.[0] || null }));
+    } else if (name === 'drawing_photos' && e.target instanceof HTMLInputElement && e.target.files) {
+      const files = Array.from(e.target.files).slice(0, 4);
+      setDrawingPhotos(files);
+    } else if (name === 'project_photos' && e.target instanceof HTMLInputElement && e.target.files) {
+      const files = Array.from(e.target.files).slice(0, 4);
+      setProjectPhotos(files);
+    } else if (name === 'project_videos' && e.target instanceof HTMLInputElement && e.target.files) {
+      const files = Array.from(e.target.files).slice(0, 2);
+      setProjectVideos(files);
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -117,6 +139,17 @@ export default function AdminPage() {
       } else if (key !== 'image') {
         submitData.append(key, (formData as any)[key]);
       }
+    });
+
+    // Append multiple files
+    drawingPhotos.forEach(file => {
+      submitData.append('drawing_photos', file);
+    });
+    projectPhotos.forEach(file => {
+      submitData.append('project_photos', file);
+    });
+    projectVideos.forEach(file => {
+      submitData.append('project_videos', file);
     });
 
     try {
@@ -154,9 +187,15 @@ export default function AdminPage() {
       start_date: '',
       completed_date: '',
       progress: '0',
+      plot_area: '',
+      plinth_area: '',
+      build_up_area: '',
       image: null,
       delete_image: false
     });
+    setDrawingPhotos([]);
+    setProjectPhotos([]);
+    setProjectVideos([]);
     setEditingProject(null);
     setShowProjectForm(false);
   };
@@ -172,9 +211,15 @@ export default function AdminPage() {
       start_date: project.start_date || '',
       completed_date: project.completed_date || '',
       progress: project.progress?.toString() || '0',
+      plot_area: project.plot_area?.toString() || '',
+      plinth_area: project.plinth_area?.toString() || '',
+      build_up_area: project.build_up_area?.toString() || '',
       image: null,
       delete_image: false
     });
+    setDrawingPhotos([]);
+    setProjectPhotos([]);
+    setProjectVideos([]);
     setShowProjectForm(true);
   };
 
@@ -605,6 +650,47 @@ export default function AdminPage() {
                       className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                     />
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Plot Area (sq ft)</label>
+                      <input
+                        type="number"
+                        name="plot_area"
+                        value={formData.plot_area}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        placeholder="e.g., 1500.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Plinth Area (sq ft)</label>
+                      <input
+                        type="number"
+                        name="plinth_area"
+                        value={formData.plinth_area}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        placeholder="e.g., 1200.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Build Up Area (sq ft)</label>
+                      <input
+                        type="number"
+                        name="build_up_area"
+                        value={formData.build_up_area}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        placeholder="e.g., 1000.00"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Project Image</label>
                     {editingProject?.image_path && !formData.delete_image && (
@@ -626,6 +712,75 @@ export default function AdminPage() {
                       onChange={handleInputChange}
                       className="w-full p-2 border border-gray-300 rounded-md"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Drawing Photos (Max 4)
+                    </label>
+                    <input
+                      type="file"
+                      name="drawing_photos"
+                      accept="image/*"
+                      multiple
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    />
+                    {drawingPhotos.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {drawingPhotos.length} file(s) selected
+                      </p>
+                    )}
+                    {editingProject?.drawing_photos && editingProject.drawing_photos.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.drawing_photos.length} photo(s)</p>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Project Photos (Max 4)
+                    </label>
+                    <input
+                      type="file"
+                      name="project_photos"
+                      accept="image/*"
+                      multiple
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    />
+                    {projectPhotos.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {projectPhotos.length} file(s) selected
+                      </p>
+                    )}
+                    {editingProject?.project_photos && editingProject.project_photos.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_photos.length} photo(s)</p>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Project Videos (Max 2)
+                    </label>
+                    <input
+                      type="file"
+                      name="project_videos"
+                      accept="video/*"
+                      multiple
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    />
+                    {projectVideos.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {projectVideos.length} file(s) selected
+                      </p>
+                    )}
+                    {editingProject?.project_videos && editingProject.project_videos.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_videos.length} video(s)</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
