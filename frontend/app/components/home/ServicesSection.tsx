@@ -66,7 +66,7 @@ export default function ServicesSection() {
   ];
 
   return (
-    <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 bg-gradient-to-b from-white via-cyan-50/30 to-blue-50/20 overflow-hidden">
+    <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 bg-white overflow-hidden">
       <div className="container mx-auto px-6 text-center">
         {/* Section Title */}
         <motion.h2
@@ -74,7 +74,7 @@ export default function ServicesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-4xl md:text-5xl font-bold mb-6 text-gray-900"
+          className="text-[1.9rem] sm:text-[2.2rem] md:text-[2.6rem] font-semibold mb-6 text-gray-800 leading-snug tracking-tight"
         >
           Our <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">Services</span>
         </motion.h2>
@@ -84,7 +84,7 @@ export default function ServicesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="text-gray-600 max-w-2xl mx-auto mb-14 text-base md:text-lg"
+          className="text-gray-700 max-w-2xl mx-auto mb-14 text-[0.95rem] sm:text-base md:text-lg leading-relaxed font-normal"
         >
           From modern architecture to elegant interiors, we offer complete
           design and build solutions tailored to your vision and lifestyle.
@@ -106,10 +106,10 @@ export default function ServicesSection() {
               >
                 {/* Custom Icon Section for Services */}
                 <div className="flex items-center mb-3">
-                  <div className="flex justify-center items-center w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white mr-3 shadow-md">
+                  <div className="flex justify-center items-center w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white mr-3 shadow-lg">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-white">
+                  <h3 className="text-xl font-semibold text-white tracking-tight">
                     {service.title}
                   </h3>
                 </div>
@@ -136,6 +136,10 @@ export default function ServicesSection() {
           </Link>
         </motion.div>
       </div>
+
+      {/* Subtle background glow */}
+      <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-cyan-50/50 blur-[120px] rounded-full -translate-x-20 -translate-y-20 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-blue-50/50 blur-[120px] rounded-full translate-x-10 translate-y-10 pointer-events-none"></div>
 
       {/* ✨ Glow Animation */}
       <style jsx>{`

@@ -76,16 +76,16 @@ export default function AchievementsOverlay() {
 
       <div className="relative z-10 container mx-auto px-4">
         {/* Title */}
-        <div className="text-center mb-6">
-          <Typography.H2 className="text-white text-[1.4rem] sm:text-[1.7rem] md:text-[1.9rem] mb-1 font-semibold">
+        <div className="text-center mb-8">
+          <Typography.H2 className="text-white mb-2">
             Our{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cyan-400 to-cyan-500 bg-clip-text text-transparent">
               Achievements
             </span>
           </Typography.H2>
 
-          <Typography.P className="text-white max-w-2xl mx-auto text-[0.8rem] sm:text-[0.9rem] leading-snug">
-            Our success is measured not just in numbers but in trust, innovation, and the dreams we’ve turned into reality.
+          <Typography.P className="text-white/90 max-w-2xl mx-auto leading-relaxed">
+            Our success is measured not just in numbers but in trust, innovation, and the dreams we've turned into reality.
           </Typography.P>
         </div>
 
@@ -114,7 +114,7 @@ export default function AchievementsOverlay() {
               </Typography.H3>
 
               {/* Counter */}
-              <Typography.Display className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg group-hover:text-cyan-400 transition-colors leading-snug">
+              <Typography.Display className="text-white text-3xl sm:text-4xl md:text-5xl font-bold drop-shadow-lg group-hover:text-cyan-400 transition-colors leading-tight tracking-tight">
                 {counts[index]}
                 {stat.suffix}
               </Typography.Display>

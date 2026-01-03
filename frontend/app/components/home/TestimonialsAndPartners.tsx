@@ -53,10 +53,10 @@ export default function TestimonialsAndPartners() {
   }, [testimonials.length]);
 
   return (
-    <section className="relative py-14 sm:py-16 bg-gradient-to-b from-white via-cyan-50/30 to-blue-50/20 overflow-hidden font-sans">
+    <section className="relative py-14 sm:py-16 bg-gray-50 overflow-hidden font-sans">
       {/* Subtle Glow Background */}
-      <div className="absolute -top-20 -left-20 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-cyan-200/40 blur-[100px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-blue-300/30 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute -top-20 -left-20 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-cyan-50/60 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-blue-50/60 blur-[120px] rounded-full pointer-events-none"></div>
 
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
         <div className="flex flex-col md:flex-row md:gap-10 gap-10">
@@ -69,7 +69,7 @@ export default function TestimonialsAndPartners() {
               viewport={{ once: true }}
               className="mb-4"
             >
-              <Typography.H2>
+              <Typography.H2 className="text-gray-800">
                 What Our{" "}
                 <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
                   Clients Say
@@ -84,7 +84,7 @@ export default function TestimonialsAndPartners() {
               viewport={{ once: true }}
               className="mb-8"
             >
-              <Typography.P>
+              <Typography.P className="text-gray-700">
                 Hear directly from the people who trusted us to bring their
                 vision to life — every project is a story of creativity and
                 trust.
@@ -100,27 +100,27 @@ export default function TestimonialsAndPartners() {
                     idx === current ? "opacity-100 z-10" : "opacity-0 z-0"
                   }`}
                 >
-                  <div className="backdrop-blur-xl bg-white/80 border border-white/40 shadow-lg rounded-3xl p-6 sm:p-8 md:p-10 text-center">
+                  <div className="backdrop-blur-xl bg-white border border-gray-200 shadow-xl rounded-3xl p-6 sm:p-8 md:p-10 text-center">
                     <img
                       src={t.image}
                       alt={t.name}
                       onError={(e) =>
                         (e.currentTarget.src = "/placeholder-profile.png")
                       }
-                      className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover shadow-md border-4 border-cyan-400/50 mb-4"
+                      className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover shadow-md border-4 border-cyan-500/50 mb-5"
                     />
-                    <Typography.P className="italic mb-4">
-                      “{t.feedback}”
+                    <Typography.P className="italic mb-5 text-gray-700">
+                      "{t.feedback}"
                     </Typography.P>
-                    <div className="flex justify-center gap-1 mb-2">
+                    <div className="flex justify-center gap-1 mb-3">
                       {Array.from({ length: t.rating }).map((_, i) => (
-                        <FaStar key={i} className="text-yellow-400 text-sm sm:text-base" />
+                        <FaStar key={i} className="text-yellow-400 text-base" />
                       ))}
                     </div>
-                    <Typography.H3 className="text-[1rem] sm:text-[1.1rem] font-medium text-gray-900">
+                    <Typography.H3 className="text-gray-900 mb-1">
                       {t.name}
                     </Typography.H3>
-                    <Typography.Small>{t.project}</Typography.Small>
+                    <Typography.Small className="text-gray-600">{t.project}</Typography.Small>
                   </div>
                 </motion.div>
               ))}
@@ -136,7 +136,7 @@ export default function TestimonialsAndPartners() {
               viewport={{ once: true }}
               className="mb-4"
             >
-              <Typography.H2>
+              <Typography.H2 className="text-gray-800">
                 Our{" "}
                 <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
                   Trusted Partners
@@ -151,7 +151,7 @@ export default function TestimonialsAndPartners() {
               viewport={{ once: true }}
               className="mb-6"
             >
-              <Typography.P>
+              <Typography.P className="text-gray-700">
                 We collaborate with visionary developers, brands, and
                 organizations to craft spaces that inspire and elevate
                 everyday living.
@@ -172,9 +172,9 @@ export default function TestimonialsAndPartners() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.45, delay: index * 0.05 }}
                   viewport={{ once: true }}
-                  className="flex items-center justify-center bg-gradient-to-br from-white via-cyan-50 to-blue-50 
-                             rounded-2xl shadow-md p-4 sm:p-5 border border-white/30 
-                             hover:shadow-lg hover:scale-[1.03] transition-all duration-500 w-[120px] sm:w-[150px]"
+                  className="flex items-center justify-center bg-white 
+                             rounded-2xl shadow-lg p-4 sm:p-5 border border-gray-200 
+                             hover:shadow-xl hover:scale-[1.03] transition-all duration-500 w-[120px] sm:w-[150px]"
                 >
                   <img
                     src={partner.logo}

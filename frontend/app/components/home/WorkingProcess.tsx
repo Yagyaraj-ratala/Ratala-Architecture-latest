@@ -20,41 +20,41 @@ export default function WorkingProcessPulse() {
       title: "Consultation & Concept",
       description:
         "We begin by understanding your lifestyle, vision, and project goals — the creative blueprint for your dream design.",
-      icon: <FaPencilRuler className="text-3xl text-cyan-400" />,
+      icon: <FaPencilRuler className="text-3xl text-cyan-500" />,
     },
     {
       title: "Design & Visualization",
       description:
         "Our architects craft detailed concepts, 3D renders, and visual walkthroughs that transform imagination into precision.",
-      icon: <FaDraftingCompass className="text-3xl text-cyan-400" />,
+      icon: <FaDraftingCompass className="text-3xl text-cyan-500" />,
     },
     {
       title: "Execution & Management",
       description:
         "From materials to timelines, our team ensures flawless construction with transparency and technical expertise.",
-      icon: <FaBuilding className="text-3xl text-cyan-400" />,
+      icon: <FaBuilding className="text-3xl text-cyan-500" />,
     },
     {
       title: "Completion & Handover",
       description:
         "We deliver with pride — on time, on quality, and beyond expectations — your vision, beautifully realized.",
-      icon: <FaSmile className="text-3xl text-cyan-400" />,
+      icon: <FaSmile className="text-3xl text-cyan-500" />,
     },
   ];
 
   return (
     <section
       ref={ref}
-      className="relative py-16 sm:py-20 bg-gradient-to-b from-white via-cyan-50/30 to-blue-50/20 overflow-hidden"
+      className="relative py-16 sm:py-20 bg-white overflow-hidden"
     >
       {/* Floating glows */}
       <motion.div
         style={{ y: y1 }}
-        className="absolute -top-10 -left-10 w-[350px] h-[350px] bg-cyan-300/30 blur-3xl rounded-full"
+        className="absolute -top-10 -left-10 w-[350px] h-[350px] bg-cyan-50/50 blur-3xl rounded-full"
       />
       <motion.div
         style={{ y: y2 }}
-        className="absolute bottom-0 right-0 w-[450px] h-[450px] bg-blue-300/30 blur-3xl rounded-full"
+        className="absolute bottom-0 right-0 w-[450px] h-[450px] bg-blue-50/50 blur-3xl rounded-full"
       />
 
       <div className="container mx-auto px-6 text-center relative z-10">
@@ -65,7 +65,7 @@ export default function WorkingProcessPulse() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <Typography.H2>
+          <Typography.H2 className="text-gray-800">
             Our{" "}
             <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
               Working Process
@@ -80,7 +80,7 @@ export default function WorkingProcessPulse() {
           transition={{ duration: 0.8 }}
           className="max-w-2xl mx-auto mb-16"
         >
-          <Typography.P className="text-center">
+          <Typography.P className="text-center text-gray-700">
             A fluid, transparent journey — from concept to completion —
             ensuring design excellence and timeless architecture.
           </Typography.P>
@@ -106,18 +106,18 @@ export default function WorkingProcessPulse() {
                 }}
                 className="relative mb-6"
               >
-                <div className="absolute inset-0 w-16 h-16 bg-cyan-400/20 rounded-full blur-xl animate-pulse" />
-                <div className="relative z-10 flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-lg border border-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <div className="absolute inset-0 w-16 h-16 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="relative z-10 flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-xl border-2 border-cyan-500 group-hover:scale-110 transition-transform duration-300">
                   {step.icon}
                 </div>
               </motion.div>
 
               {/* Step Content using Typography system */}
-              <Typography.H3 className="mb-3 text-gray-900 group-hover:text-cyan-600 transition-colors">
+              <Typography.H3 className="mb-4 text-gray-800 group-hover:text-cyan-500 transition-colors">
                 {step.title}
               </Typography.H3>
 
-              <Typography.P className="text-center max-w-xs mx-auto text-gray-600">
+              <Typography.P className="text-center max-w-xs mx-auto text-gray-700">
                 {step.description}
               </Typography.P>
             </motion.div>

@@ -249,7 +249,7 @@ export default function HomeHero() {
         </div>
 
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/60 via-blue-900/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/75 via-slate-800/50 to-transparent" />
 
         {/* Content Container */}
         <div className="relative z-10 flex items-center h-full pt-24 sm:pt-32 md:pt-40">
@@ -260,24 +260,24 @@ export default function HomeHero() {
               <div className="text-white">
                 <h1
                   key={`title-${currentSlide}`}
-                  className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent animate-fadeIn"
+                  className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-5 sm:mb-7 bg-gradient-to-r from-white via-cyan-50 to-white bg-clip-text text-transparent leading-tight tracking-tight animate-fadeIn"
                 >
                   {currentSlideData.title}
                 </h1>
 
                 <p
                   key={`subtitle-${currentSlide}`}
-                  className="text-base sm:text-lg md:text-2xl mb-6 sm:mb-8 text-blue-100 leading-snug sm:leading-relaxed animate-fadeIn delay-200"
+                  className="text-base sm:text-lg md:text-xl lg:text-2xl mb-7 sm:mb-9 text-white/90 leading-relaxed font-normal animate-fadeIn delay-200"
                 >
                   {currentSlideData.subtitle}
                 </p>
 
                 {/* Features List */}
-                <div className="mb-6 sm:mb-8 animate-fadeIn delay-300">
-                  <ul className="space-y-2 sm:space-y-3">
+                <div className="mb-7 sm:mb-9 animate-fadeIn delay-300">
+                  <ul className="space-y-3 sm:space-y-3.5">
                     {currentSlideData.features.map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm sm:text-base md:text-lg">
-                        <div className="w-2 h-2 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full mr-3"></div>
+                      <li key={index} className="flex items-center text-sm sm:text-base md:text-lg text-white/95 font-medium">
+                        <div className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full mr-3.5 shadow-sm"></div>
                         {feature}
                       </li>
                     ))}
@@ -307,24 +307,24 @@ export default function HomeHero() {
 
               {/* Right Side - CTA Card (hidden on mobile) */}
               <div className="hidden lg:block animate-fadeIn delay-500">
-                <div className="bg-transparent backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-lg">
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/30 shadow-2xl">
                   <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold text-white mb-2">Start Your Dream Project</h3>
-                    <p className="text-blue-100">Get expert consultation today</p>
+                    <h3 className="text-2xl font-bold text-white mb-2.5 tracking-tight">Start Your Dream Project</h3>
+                    <p className="text-white/80 text-base font-normal">Get expert consultation today</p>
                   </div>
 
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-center text-white">
-                      <Phone className="w-5 h-5 mr-3 text-cyan-500" />
-                      <span>+977 9851325508</span>
+                  <div className="space-y-4 mb-7">
+                    <div className="flex items-center text-white/95">
+                      <Phone className="w-5 h-5 mr-3.5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-base font-medium">+977 9851325508</span>
                     </div>
-                    <div className="flex items-center text-white">
-                      <Mail className="w-5 h-5 mr-3 text-cyan-500" />
-                      <span>info@ratalaarchitecture.com</span>
+                    <div className="flex items-center text-white/95">
+                      <Mail className="w-5 h-5 mr-3.5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-base font-medium">info@ratalaarchitecture.com</span>
                     </div>
-                    <div className="flex items-center text-white">
-                      <MapPin className="w-5 h-5 mr-3 text-cyan-500" />
-                      <span>Kathmandu, Nepal</span>
+                    <div className="flex items-center text-white/95">
+                      <MapPin className="w-5 h-5 mr-3.5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-base font-medium">Kathmandu, Nepal</span>
                     </div>
                   </div>
 
