@@ -102,20 +102,20 @@ export default function AboutPreview() {
   return (
     <section
       ref={ref}
-      className="relative pt-20 pb-10 md:pt-32 md:pb-14 bg-gradient-to-b from-white via-cyan-50/30 to-blue-50/20 overflow-hidden"
+      className="relative pt-20 pb-10 md:pt-32 md:pb-14 bg-white overflow-hidden"
     >
       {/* 🌈 Subtle floating background glows for depth */}
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         transition={{ duration: 1.2 }}
-        className="absolute top-0 left-[-100px] w-[400px] h-[400px] bg-cyan-300/20 blur-3xl rounded-full"
+        className="absolute top-0 left-[-100px] w-[400px] h-[400px] bg-cyan-50/40 blur-3xl rounded-full"
       />
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         transition={{ duration: 1.2, delay: 0.3 }}
-        className="absolute bottom-[-100px] right-[-80px] w-[450px] h-[450px] bg-blue-300/20 blur-3xl rounded-full"
+        className="absolute bottom-[-100px] right-[-80px] w-[450px] h-[450px] bg-blue-50/40 blur-3xl rounded-full"
       />
 
       <div className="container mx-auto px-5 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center min-h-[70vh] md:min-h-[85vh] relative z-10">
@@ -163,11 +163,11 @@ export default function AboutPreview() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="w-full max-w-lg mx-auto text-center md:text-left px-4 py-8 md:py-0"
         >
-          <h4 className="text-cyan-500 font-semibold uppercase tracking-[0.25em] mb-3">
+          <h4 className="text-cyan-500 font-semibold uppercase tracking-[0.2em] mb-4 text-sm">
             About Us
           </h4>
 
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-snug text-gray-900">
+          <h2 className="text-[1.9rem] sm:text-[2.2rem] md:text-[2.6rem] font-semibold mb-6 leading-snug tracking-tight text-gray-800">
             Building{" "}
             <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
               Smart, Sustainable
@@ -175,7 +175,7 @@ export default function AboutPreview() {
             Designs for Modern Living
           </h2>
 
-          <p className="text-gray-600 leading-relaxed mb-8 text-base md:text-lg max-w-lg">
+          <p className="text-gray-700 leading-relaxed mb-9 text-[0.95rem] sm:text-base md:text-lg max-w-lg font-normal">
             We're a creative architecture agency based in Nepal, blending design
             innovation with technology to shape inspiring, sustainable spaces.
             With over 15 years of expertise, we deliver high-quality projects that
@@ -187,22 +187,22 @@ export default function AboutPreview() {
           <div className="flex flex-wrap justify-center md:justify-start gap-6 sm:gap-8 mb-10">
             <motion.div
               animate={controls}
-              className="border-2 border-cyan-500 rounded-xl px-6 sm:px-8 py-4 sm:py-5 text-center shadow-sm bg-white/90 backdrop-blur-sm"
+              className="border-2 border-cyan-500 rounded-xl px-6 sm:px-8 py-4 sm:py-5 text-center shadow-md bg-white/95 backdrop-blur-sm"
             >
-              <p className="text-4xl sm:text-5xl font-bold text-cyan-500">
+              <p className="text-4xl sm:text-5xl font-bold text-cyan-500 tracking-tight">
                 {years}+
               </p>
-              <p className="text-gray-800 font-semibold text-xs sm:text-sm leading-tight">
+              <p className="text-gray-800 font-semibold text-xs sm:text-sm leading-tight mt-1">
                 Years <br /> of Experience
               </p>
             </motion.div>
 
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="border-2 border-blue-500 rounded-xl px-6 sm:px-8 py-4 sm:py-5 text-center shadow-sm bg-white/90 backdrop-blur-sm"
+              className="border-2 border-cyan-500 rounded-xl px-6 sm:px-8 py-4 sm:py-5 text-center shadow-md bg-white/95 backdrop-blur-sm"
             >
-              <p className="text-4xl sm:text-5xl font-bold text-blue-500">100%</p>
-              <p className="text-gray-800 font-semibold text-xs sm:text-sm leading-tight">
+              <p className="text-4xl sm:text-5xl font-bold text-cyan-500 tracking-tight">100%</p>
+              <p className="text-gray-800 font-semibold text-xs sm:text-sm leading-tight mt-1">
                 Client <br /> Satisfaction
               </p>
             </motion.div>
