@@ -17,3 +17,4 @@ public/uploads/
 *.log
 package-lock.json
 /.parcel-cache/
+Backend/__pycache__/

@@ -24,7 +24,6 @@ export default function Home() {
       <ProjectsShowcase />
       <WorkingProcess />
       <TestimonialsAndPartners />
-
     </>
   );
 }

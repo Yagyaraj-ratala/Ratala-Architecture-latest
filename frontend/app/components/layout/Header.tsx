@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
 import dynamic from 'next/dynamic';
+import { useChatbot } from '@/app/contexts/ChatbotContext';
 
 
 // Import Modal component
@@ -79,6 +80,7 @@ const Header: React.FC = () => {
   const projectsButtonRef = useRef<HTMLButtonElement>(null);
   const projectsDropdownRef = useRef<HTMLDivElement>(null);
   const hoverLockRef = useRef(false);
+  const { openChat } = useChatbot();
   
 
   useEffect(() => {
@@ -130,6 +132,7 @@ const Header: React.FC = () => {
     { href: "/services", label: "Services" },
     { href: "/cost-calculator", label: "Cost Calculator" },
     { href: "/blogs", label: "Blogs & Articles" },
+    { href: "/ai-designer", label: "AI Designer" },
     { href: "/contact", label: "Contact" },
     { href: "/login", label: "Admin" },
   ];
@@ -380,10 +383,12 @@ const Header: React.FC = () => {
           {/* Consistent Gradient Button */}
           <Button
             size="md"
+            className="italic"
             animated={!isSpinning}
             spinning={isSpinning}
+            onClick={openChat}
           >
-            Get Free AI Quote
+            Ratala AI
           </Button>
 
         </div>
