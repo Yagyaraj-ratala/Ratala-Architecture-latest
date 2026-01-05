@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin } from "lucide-react";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
 import { Typography } from "@/app/components/ui/Typography";
 
 export default function Footer() {
@@ -102,7 +103,7 @@ export default function Footer() {
             </Typography.Small>
           </motion.div>
 
-          {/* === Contact Info === */}
+          {/* === Contact Info & Social Media === */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -112,7 +113,7 @@ export default function Footer() {
             <Typography.H3 className="text-gray-800 mb-6 pb-2 border-b-2 border-cyan-500 w-fit">
               Contact Us
             </Typography.H3>
-            <div className="space-y-4">
+            <div className="space-y-4 mb-6">
               <div className="flex items-start gap-3">
                 <MapPin size={18} className="text-cyan-500 mt-1 flex-shrink-0" />
                 <Typography.P className="text-gray-700 text-sm leading-relaxed">
@@ -135,6 +136,43 @@ export default function Footer() {
                   className="text-gray-700 text-sm hover:text-cyan-500 transition-colors duration-300"
                 >
                   info@ratalaarchitecture.com
+                </a>
+              </div>
+            </div>
+
+            {/* Social Media Links */}
+            <div>
+              <Typography.H3 className="text-gray-800 mb-4 pb-2 border-b-2 border-cyan-500 w-fit">
+                Follow Us
+              </Typography.H3>
+              <div className="flex items-center gap-4">
+                <a
+                  href="#"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
+                  aria-label="Facebook"
+                >
+                  <FaFacebookF className="w-5 h-5" />
+                </a>
+                <a
+                  href="#"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
+                  aria-label="YouTube"
+                >
+                  <FaYoutube className="w-5 h-5" />
+                </a>
+                <a
+                  href="#"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
+                  aria-label="LinkedIn"
+                >
+                  <FaLinkedinIn className="w-5 h-5" />
+                </a>
+                <a
+                  href="#"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
+                  aria-label="Instagram"
+                >
+                  <FaInstagram className="w-5 h-5" />
                 </a>
               </div>
             </div>

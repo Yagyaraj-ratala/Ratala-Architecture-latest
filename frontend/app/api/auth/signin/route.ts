@@ -1,43 +1,98 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json();
+    // Check if request has body
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return NextResponse.json(
+        { error: 'Content-Type must be application/json' },
+        { status: 400 }
+      );
+    }
 
-    // 1. Find user by username
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Find user by email only
     const user = await db.oneOrNone(
-      'SELECT * FROM public."SIGN_IN" WHERE username = $1',
-      [username]
+      'SELECT id, username, email, password_hash, role, created_at FROM public."sign_in" WHERE email = $1',
+      [email]
     );
 
-    // 2. If user doesn't exist, return error
+    // If user doesn't exist, return error
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid username or password' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // 3. Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    
-    // 4. If password is invalid, return error
+    // Compare passwords
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+
+    // If password is invalid, return error
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: 'Invalid username or password' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // 5. If everything is valid, return success
+    // Check JWT_SECRET before signing
+    if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+      console.error('❌ Signin: JWT_SECRET is not configured!');
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact administrator.' },
+        { status: 500 }
+      );
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email || user.username,
+        username: user.username,
+        role: user.role
+      },
+      JWT_SECRET,
+      {
+        expiresIn: '7d'
+      }
+    );
+
+
+    // If everything is valid, return success with token
     return NextResponse.json(
-      { 
+      {
         message: 'Login successful',
+        token,
         user: {
           id: user.id,
+          email: user.email || user.username,
           username: user.username,
+          role: user.role,
           created_at: user.created_at
         }
       },

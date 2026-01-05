@@ -1,16 +1,9 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
-
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'ratala_architecture',
-  password: 'SYSTEM',
-  port: 5432,
-});
+import { requireAuth } from '@/lib/auth';
 
 const uploadDir = join(process.cwd(), 'public', 'uploads');
 
@@ -21,9 +14,19 @@ function generateFileName(originalName: string): string {
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    // Verify authentication
+    await requireAuth(request);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
   let client;
   try {
     const { id } = await params;
@@ -58,11 +61,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Maximum 2 project videos allowed' }, { status: 400 });
     }
 
-    client = await pool.connect();
-    
     let imagePath = null;
-    const existingProject = await client.query('SELECT image_path, drawing_photos, project_photos, project_videos FROM projects WHERE id = $1', [id]);
-    
+    const existingProject = await db.query('SELECT image_path, drawing_photos, project_photos, project_videos FROM projects WHERE id = $1', [id]);
+
     if (deleteImage && existingProject.rows[0]?.image_path) {
       try {
         await unlink(join(uploadDir, existingProject.rows[0].image_path));
@@ -89,10 +90,10 @@ export async function PUT(
     }
 
     // Process drawing photos - keep existing or initialize empty array
-    let drawingPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.drawing_photos) 
-      ? [...existingProject.rows[0].drawing_photos] 
+    let drawingPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.drawing_photos)
+      ? [...existingProject.rows[0].drawing_photos]
       : (existingProject.rows[0]?.drawing_photos ? JSON.parse(JSON.stringify(existingProject.rows[0].drawing_photos)) : []);
-    
+
     for (const photo of drawingPhotos) {
       if (photo instanceof File && photo.size > 0) {
         const fileName = generateFileName(photo.name);
@@ -109,10 +110,10 @@ export async function PUT(
     }
 
     // Process project photos - keep existing or initialize empty array
-    let projectPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_photos) 
-      ? [...existingProject.rows[0].project_photos] 
+    let projectPhotoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_photos)
+      ? [...existingProject.rows[0].project_photos]
       : (existingProject.rows[0]?.project_photos ? JSON.parse(JSON.stringify(existingProject.rows[0].project_photos)) : []);
-    
+
     for (const photo of projectPhotos) {
       if (photo instanceof File && photo.size > 0) {
         const fileName = generateFileName(photo.name);
@@ -129,10 +130,10 @@ export async function PUT(
     }
 
     // Process project videos - keep existing or initialize empty array
-    let projectVideoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_videos) 
-      ? [...existingProject.rows[0].project_videos] 
+    let projectVideoPaths: string[] = Array.isArray(existingProject.rows[0]?.project_videos)
+      ? [...existingProject.rows[0].project_videos]
       : (existingProject.rows[0]?.project_videos ? JSON.parse(JSON.stringify(existingProject.rows[0].project_videos)) : []);
-    
+
     for (const video of projectVideos) {
       if (video instanceof File && video.size > 0) {
         const fileName = generateFileName(video.name);
@@ -152,8 +153,8 @@ export async function PUT(
     const plotAreaValue = plotArea ? parseFloat(plotArea) : null;
     const plinthAreaValue = plinthArea ? parseFloat(plinthArea) : null;
     const buildUpAreaValue = buildUpArea ? parseFloat(buildUpArea) : null;
-    
-    const result = await client.query(
+
+    const result = await db.query(
       `UPDATE projects 
        SET status = $1, project_type = $2, title = $3, location = $4, description = $5, 
            image_path = $6, start_date = $7, completed_date = $8, progress = $9, 
@@ -185,22 +186,28 @@ export async function PUT(
   } catch (error) {
     console.error('Error updating project:', error);
     return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    // Verify authentication
+    await requireAuth(request);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
   let client;
   try {
     const { id } = await params;
-    client = await pool.connect();
-    
-    const existingProject = await client.query('SELECT image_path FROM projects WHERE id = $1', [id]);
-    
+
+    const existingProject = await db.query('SELECT image_path FROM projects WHERE id = $1', [id]);
+
     if (existingProject.rows[0]?.image_path) {
       try {
         await unlink(join(uploadDir, existingProject.rows[0].image_path));
@@ -209,14 +216,12 @@ export async function DELETE(
       }
     }
 
-    await client.query('DELETE FROM projects WHERE id = $1', [id]);
+    await db.query('DELETE FROM projects WHERE id = $1', [id]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting project:', error);
     return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }
 

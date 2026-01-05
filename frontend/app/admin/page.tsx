@@ -2,923 +2,1848 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
+import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiEye, FiEyeOff } from 'react-icons/fi';
+import { getAuthToken, clearAuthData } from '@/lib/auth-storage';
 
 interface Project {
-  id: number;
-  status: 'ongoing' | 'completed';
-  project_type: 'residential' | 'commercial' | 'renovation' | 'hospitality';
-  title: string;
-  location: string;
-  description?: string | null;
-  image_path?: string | null;
-  start_date?: string | null;
-  completed_date?: string | null;
-  progress?: number | null;
-  plot_area?: number | null;
-  plinth_area?: number | null;
-  build_up_area?: number | null;
-  drawing_photos?: string[] | null;
-  project_photos?: string[] | null;
-  project_videos?: string[] | null;
-  created_at: string;
-  updated_at: string;
+    id: number;
+    status: 'ongoing' | 'completed';
+    project_type: 'residential' | 'commercial' | 'renovation' | 'hospitality';
+    title: string;
+    location: string;
+    description?: string | null;
+    image_path?: string | null;
+    start_date?: string | null;
+    completed_date?: string | null;
+    progress?: number | null;
+    plot_area?: number | null;
+    plinth_area?: number | null;
+    build_up_area?: number | null;
+    drawing_photos?: string[] | null;
+    project_photos?: string[] | null;
+    project_videos?: string[] | null;
+    created_at: string;
+    updated_at: string;
 }
 
 interface Quotation {
-  id: number;
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  project_type?: string;
-  estimated_budgets?: string;
-  project_details?: string | null;
-  created_at?: string;
+    id: number;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    project_type?: string;
+    estimated_budgets?: string;
+    project_details?: string | null;
+    created_at?: string;
 }
 
 interface Contact {
-  id: number;
-  full_name: string;
-  email: string;
-  phone?: string | null;
-  subject?: string | null;
-  message?: string | null;
-  created_at?: string | null;
+    id: number;
+    full_name: string;
+    email: string;
+    phone?: string | null;
+    subject?: string | null;
+    message?: string | null;
+    created_at?: string | null;
+}
+
+interface User {
+    id: number;
+    username: string;
+    email: string;
+    password?: string; // In a real app this wouldn't be here like this, but per request
+    role?: string;
+    created_at: string;
+}
+
+interface Ticket {
+    id: number;
+    username: string;
+    service_name: string;
+    problem_description: string;
+    status: 'open' | 'solved' | 'closed';
+    created_at: string;
+    updated_at: string;
+}
+
+interface Blog {
+    id: number;
+    title: string;
+    slug: string;
+    summary: string | null;
+    content: string;
+    author: string | null;
+    image_path: string | null;
+    category: string | null;
+    status: 'draft' | 'published';
+    created_at: string;
+    updated_at: string;
 }
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [user] = useState({ name: 'Admin', email: 'admin@example.com' });
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [reportVisible, setReportVisible] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<'quotations' | 'contacts' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showProjectForm, setShowProjectForm] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'ongoing' | 'completed'>('all');
-  const [filterType, setFilterType] = useState<'all' | 'residential' | 'commercial' | 'renovation' | 'hospitality'>('all');
-  
-  const [formData, setFormData] = useState({
-    status: 'ongoing' as 'ongoing' | 'completed',
-    project_type: 'residential' as 'residential' | 'commercial' | 'renovation' | 'hospitality',
-    title: '',
-    location: '',
-    description: '',
-    start_date: '',
-    completed_date: '',
-    progress: '0',
-    plot_area: '',
-    plinth_area: '',
-    build_up_area: '',
-    image: null as File | null,
-    delete_image: false
-  });
+    const router = useRouter();
+    const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'settings' | 'tickets' | 'contactreport' | 'quotationreport' | 'blogs'>('dashboard');
 
-  const [drawingPhotos, setDrawingPhotos] = useState<File[]>([]);
-  const [projectPhotos, setProjectPhotos] = useState<File[]>([]);
-  const [projectVideos, setProjectVideos] = useState<File[]>([]);
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [ticketsLoading, setTicketsLoading] = useState(false);
+    const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProjects();
-  }, [filterStatus, filterType]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [usersError, setUsersError] = useState<string | null>(null);
+    const [showUserForm, setShowUserForm] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [userFormData, setUserFormData] = useState({ username: '', email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
 
-  const fetchProjects = async () => {
-    setIsLoading(true);
-    try {
-      let url = '/api/admin/projects';
-      const params = new URLSearchParams();
-      if (filterStatus !== 'all') params.append('status', filterStatus);
-      if (filterType !== 'all') params.append('type', filterType);
-      if (params.toString()) url += '?' + params.toString();
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch projects');
-      const data = await response.json();
-      setProjects(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      alert('Failed to load projects');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [quotations, setQuotations] = useState<Quotation[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [reportLoading, setReportLoading] = useState(false);
+    const [reportError, setReportError] = useState<string | null>(null);
+    const [reportType, setReportType] = useState<'quotations' | 'contacts' | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === 'image' && e.target instanceof HTMLInputElement && e.target.files) {
-      setFormData(prev => ({ ...prev, image: e.target.files?.[0] || null }));
-    } else if (name === 'drawing_photos' && e.target instanceof HTMLInputElement && e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 4);
-      setDrawingPhotos(files);
-    } else if (name === 'project_photos' && e.target instanceof HTMLInputElement && e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 4);
-      setProjectPhotos(files);
-    } else if (name === 'project_videos' && e.target instanceof HTMLInputElement && e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 2);
-      setProjectVideos(files);
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
+    const [blogs, setBlogs] = useState<Blog[]>([]);
+    const [blogsLoading, setBlogsLoading] = useState(false);
+    const [blogsError, setBlogsError] = useState<string | null>(null);
+    const [showBlogForm, setShowBlogForm] = useState(false);
+    const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
+    const [blogFormData, setBlogFormData] = useState({
+        title: '',
+        slug: '',
+        summary: '',
+        content: '',
+        author: '',
+        category: '',
+        status: 'published' as 'draft' | 'published',
+        image: null as File | null,
+        delete_image: false
+    });
+    const [showProjectForm, setShowProjectForm] = useState(false);
+    const [editingProject, setEditingProject] = useState<Project | null>(null);
+    const [filterStatus, setFilterStatus] = useState<'all' | 'ongoing' | 'completed'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'residential' | 'commercial' | 'renovation' | 'hospitality'>('all');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title || !formData.location) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const submitData = new FormData();
-    Object.keys(formData).forEach(key => {
-      if (key === 'image' && formData.image) {
-        submitData.append('image', formData.image);
-      } else if (key !== 'image') {
-        submitData.append(key, (formData as any)[key]);
-      }
+    const [formData, setFormData] = useState({
+        status: 'ongoing' as 'ongoing' | 'completed',
+        project_type: 'residential' as 'residential' | 'commercial' | 'renovation' | 'hospitality',
+        title: '',
+        location: '',
+        description: '',
+        start_date: '',
+        completed_date: '',
+        progress: '0',
+        plot_area: '',
+        plinth_area: '',
+        build_up_area: '',
+        image: null as File | null,
+        delete_image: false
     });
 
-    // Append multiple files
-    drawingPhotos.forEach(file => {
-      submitData.append('drawing_photos', file);
-    });
-    projectPhotos.forEach(file => {
-      submitData.append('project_photos', file);
-    });
-    projectVideos.forEach(file => {
-      submitData.append('project_videos', file);
-    });
+    const [drawingPhotos, setDrawingPhotos] = useState<File[]>([]);
+    const [projectPhotos, setProjectPhotos] = useState<File[]>([]);
+    const [projectVideos, setProjectVideos] = useState<File[]>([]);
 
-    try {
-      const url = editingProject 
-        ? `/api/admin/projects/${editingProject.id}`
-        : '/api/admin/projects';
-      const method = editingProject ? 'PUT' : 'POST';
+    useEffect(() => {
+        fetchProjects();
+    }, [filterStatus, filterType]);
 
-      const response = await fetch(url, {
-        method,
-        body: submitData,
-      });
+    useEffect(() => {
+        if (activeSection === 'quotationreport') {
+            fetchQuotations();
+        }
+        if (activeSection === 'blogs') {
+            fetchBlogs();
+        }
+    }, [activeSection]);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save project');
-      }
+    const fetchTickets = async () => {
+        setTicketsLoading(true);
+        setTicketsError(null);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
 
-      alert(`Project ${editingProject ? 'updated' : 'created'} successfully!`);
-      resetForm();
-      fetchProjects();
-    } catch (error) {
-      console.error('Error saving project:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to save project'}`);
-    }
-  };
+            const response = await fetch('/api/admin/tickets', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-  const resetForm = () => {
-    setFormData({
-      status: 'ongoing',
-      project_type: 'residential',
-      title: '',
-      location: '',
-      description: '',
-      start_date: '',
-      completed_date: '',
-      progress: '0',
-      plot_area: '',
-      plinth_area: '',
-      build_up_area: '',
-      image: null,
-      delete_image: false
-    });
-    setDrawingPhotos([]);
-    setProjectPhotos([]);
-    setProjectVideos([]);
-    setEditingProject(null);
-    setShowProjectForm(false);
-  };
+            if (response.ok) {
+                const data = await response.json();
+                setTickets(data);
+            } else {
+                setTicketsError('Failed to load tickets');
+            }
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+            setTicketsError('Error loading tickets');
+        } finally {
+            setTicketsLoading(false);
+        }
+    };
 
-  const handleEdit = (project: Project) => {
-    setEditingProject(project);
-    setFormData({
-      status: project.status,
-      project_type: project.project_type,
-      title: project.title,
-      location: project.location,
-      description: project.description || '',
-      start_date: project.start_date || '',
-      completed_date: project.completed_date || '',
-      progress: project.progress?.toString() || '0',
-      plot_area: project.plot_area?.toString() || '',
-      plinth_area: project.plinth_area?.toString() || '',
-      build_up_area: project.build_up_area?.toString() || '',
-      image: null,
-      delete_image: false
-    });
-    setDrawingPhotos([]);
-    setProjectPhotos([]);
-    setProjectVideos([]);
-    setShowProjectForm(true);
-  };
+    const handleTicketStatusUpdate = async (id: number, status: string) => {
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/admin/tickets/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status })
+            });
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this project?')) {
-      return;
-    }
+            if (response.ok) {
+                fetchTickets();
+            } else {
+                alert('Failed to update ticket status');
+            }
+        } catch (error) {
+            console.error('Error updating ticket status:', error);
+            alert('Error updating ticket status');
+        }
+    };
 
-    try {
-      const response = await fetch(`/api/admin/projects/${id}`, {
-        method: 'DELETE',
-      });
+    const handleTicketDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this ticket?')) return;
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete project');
-      }
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/admin/tickets/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-      alert('Project deleted successfully!');
-      fetchProjects();
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete project'}`);
-    }
-  };
+            if (response.ok) {
+                fetchTickets();
+            } else {
+                alert('Failed to delete ticket');
+            }
+        } catch (error) {
+            console.error('Error deleting ticket:', error);
+            alert('Error deleting ticket');
+        }
+    };
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    router.push('/login');
-  };
+    const fetchContacts = async () => {
+        setReportLoading(true);
+        setReportError(null);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
 
-  const exportToCSV = () => {
-    const formatDate = (val?: string) =>
-      val ? new Date(val).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            const res = await fetch('/api/admin/contact-us', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-    if (reportType === 'contacts') {
-      if (!contacts || contacts.length === 0) {
-        alert('No customer responses to export');
-        return;
-      }
+            if (res.ok) {
+                const data = await res.json();
+                setContacts(Array.isArray(data) ? data : []);
+            } else {
+                setReportError('Failed to load contact reports');
+            }
+        } catch (err) {
+            console.error('Failed to fetch contacts', err);
+            setReportError('Error loading contact reports');
+        } finally {
+            setReportLoading(false);
+        }
+    };
 
-      const headers = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Submitted'];
-      const rows = contacts.map((c) => [
-        c.id ?? '',
-        c.full_name ?? '',
-        c.email ?? '',
-        c.phone ?? '',
-        c.subject ?? '',
-        c.message ?? '',
-        formatDate(c.created_at ?? undefined),
-      ]);
+    const fetchQuotations = async () => {
+        setReportLoading(true);
+        setReportError(null);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
 
-      const csvContent = [headers, ...rows]
-        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-        .join('\r\n');
+            const res = await fetch('/api/admin/quotations', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `customer_responses_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      return;
-    }
+            if (res.ok) {
+                const data = await res.json();
+                setQuotations(Array.isArray(data) ? data : []);
+            } else {
+                setReportError('Failed to load quotations');
+            }
+        } catch (err) {
+            console.error('Failed to fetch quotations', err);
+            setReportError('Error loading quotations');
+        } finally {
+            setReportLoading(false);
+        }
+    };
 
-    if (!quotations || quotations.length === 0) {
-      alert('No quotation data to export');
-      return;
-    }
+    const handleContactDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this contact record?')) return;
 
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Project Type', 'Budget', 'Details', 'Submitted'];
-    const rows = quotations.map((q) => [
-      q.id ?? '',
-      q.full_name ?? '',
-      q.email ?? '',
-      q.phone ?? '',
-      q.project_type ?? '',
-      q.estimated_budgets ?? '',
-      q.project_details ?? '',
-      formatDate(q.created_at ?? undefined),
-    ]);
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/admin/contact-us/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
+            if (response.ok) {
+                fetchContacts();
+            } else {
+                alert('Failed to delete contact record');
+            }
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+            alert('Error deleting contact');
+        }
+    };
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `quotations_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
+    const handleQuotationDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this quotation record?')) return;
 
-  const ongoingCount = projects.filter(p => p.status === 'ongoing').length;
-  const completedCount = projects.filter(p => p.status === 'completed').length;
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/admin/quotations/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        <div className="w-64 bg-white shadow-lg h-screen sticky top-40 flex flex-col z-10">
-          <div className="p-4 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
-            <p className="text-sm text-gray-500">info@ratalaarchitecture.com</p>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto">
-            <ul className="p-4 space-y-2">
-              <li>
-                <a href="#" className="flex items-center p-2 text-cyan-600 font-medium rounded-lg bg-cyan-50">
-                  <FiHome className="mr-3" />
-                  Dashboard
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                  <FiUsers className="mr-3" />
-                  Users
-                </a>
-              </li>
-              <li>
-                <button
-                  onClick={async () => {
-                    setReportVisible(true);
-                    setReportType('contacts');
-                    setReportLoading(true);
-                    setReportError(null);
-                    try {
-                      const res = await fetch('/api/admin/contact-us');
-                      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                      const data = await res.json();
-                      setContacts(Array.isArray(data) ? data : []);
-                    } catch (err) {
-                      console.error('Failed to fetch contacts', err);
-                      setReportError('Failed to load customer responses');
-                    } finally {
-                      setReportLoading(false);
-                    }
-                  }}
-                  className="w-full text-left flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  <FiFileText className="mr-3" />
-                  Contact Us Report
-                </button>
-              </li>
+            if (response.ok) {
+                fetchQuotations();
+            } else {
+                alert('Failed to delete quotation record');
+            }
+        } catch (error) {
+            console.error('Error deleting quotation:', error);
+            alert('Error deleting quotation');
+        }
+    };
 
-              <li>
-                <button
-                  onClick={async () => {
-                    setReportVisible(true);
-                    setReportType('quotations');
-                    setReportLoading(true);
-                    setReportError(null);
-                    try {
-                      const res = await fetch('/api/admin/quotations');
-                      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                      const data = await res.json();
-                      setQuotations(Array.isArray(data) ? data : []);
-                    } catch (err) {
-                      console.error('Failed to fetch quotations', err);
-                      setReportError('Failed to load quotations');
-                    } finally {
-                      setReportLoading(false);
-                    }
-                  }}
-                  className="w-full text-left flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  <FiFileText className="mr-3" />
-                  Quotation Report
-                </button>
-              </li>
-              <li>
-                <a href="#" className="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                  <FiSettings className="mr-3" />
-                  Settings
-                </a>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="p-4 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <FiLogOut className="mr-2" />
-              Logout
-            </button>
-          </div>
-        </div>
+    const fetchBlogs = async () => {
+        setBlogsLoading(true);
+        setBlogsError(null);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
 
-        <main className="flex-1 p-8 pt-40 relative z-0">
-          {reportVisible ? (
-            <div className="bg-white rounded-lg shadow p-6 mt-6 relative mx-auto max-w-6xl min-h-[72vh]">
-              <div className="mb-4 relative pt-2">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  {reportType === 'contacts' ? 'Customer Response Report' : 'Quotation Report'}
-                </h2>
-                <div className="absolute right-4 top-0 flex items-center gap-2 z-30">
-                  <button onClick={() => { setReportVisible(false); setReportType(null); }} className="px-3 py-1 bg-gray-100 rounded">Back</button>
-                  <button onClick={exportToCSV} className="px-3 py-1 bg-cyan-600 text-white rounded">Export CSV</button>
+            const response = await fetch('/api/admin/blogs', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setBlogs(Array.isArray(data) ? data : []);
+            } else {
+                setBlogsError('Failed to load blogs');
+            }
+        } catch (error) {
+            console.error('Error fetching blogs:', error);
+            setBlogsError('Error loading blogs');
+        } finally {
+            setBlogsLoading(false);
+        }
+    };
+
+    const resetBlogForm = () => {
+        setBlogFormData({
+            title: '',
+            slug: '',
+            summary: '',
+            content: '',
+            author: '',
+            category: '',
+            status: 'published',
+            image: null,
+            delete_image: false
+        });
+        setEditingBlog(null);
+        setShowBlogForm(false);
+    };
+
+    const handleBlogEdit = (blog: Blog) => {
+        setEditingBlog(blog);
+        setBlogFormData({
+            title: blog.title,
+            slug: blog.slug,
+            summary: blog.summary || '',
+            content: blog.content,
+            author: blog.author || '',
+            category: blog.category || '',
+            status: blog.status,
+            image: null,
+            delete_image: false
+        });
+        setShowBlogForm(true);
+    };
+
+    const handleBlogDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this blog post?')) return;
+
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/admin/blogs/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                fetchBlogs();
+            } else {
+                alert('Failed to delete blog post');
+            }
+        } catch (error) {
+            console.error('Error deleting blog:', error);
+            alert('Error deleting blog');
+        }
+    };
+
+    const handleBlogSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const token = getAuthToken();
+            const formData = new FormData();
+            formData.append('title', blogFormData.title);
+            formData.append('slug', blogFormData.slug);
+            formData.append('summary', blogFormData.summary);
+            formData.append('content', blogFormData.content);
+            formData.append('author', blogFormData.author);
+            formData.append('category', blogFormData.category);
+            formData.append('status', blogFormData.status);
+            if (blogFormData.image) {
+                formData.append('image', blogFormData.image);
+            }
+            if (blogFormData.delete_image) {
+                formData.append('delete_image', 'true');
+            }
+
+            const url = editingBlog ? `/api/admin/blogs/${editingBlog.id}` : '/api/admin/blogs';
+            const method = editingBlog ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (response.ok) {
+                resetBlogForm();
+                fetchBlogs();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to save blog');
+            }
+        } catch (error) {
+            console.error('Error saving blog:', error);
+            alert('Error saving blog');
+        }
+    };
+
+    const fetchUsers = async () => {
+        setUsersLoading(true);
+        setUsersError(null);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+
+            const response = await fetch('/api/admin/users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            } else {
+                setUsersError('Failed to load users');
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            setUsersError('Error loading users');
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    const fetchProjects = async () => {
+        setIsLoading(true);
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            let url = '/api/admin/projects';
+            const params = new URLSearchParams();
+            if (filterStatus !== 'all') params.append('status', filterStatus);
+            if (filterType !== 'all') params.append('type', filterType);
+            if (params.toString()) url += '?' + params.toString();
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 401) {
+                clearAuthData();
+                router.push('/login');
+                return;
+            }
+
+            if (!response.ok) throw new Error('Failed to fetch projects');
+            const data = await response.json();
+            setProjects(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Error fetching projects:', error);
+            if (error instanceof Error && error.message === 'No authentication token found') {
+                clearAuthData();
+                router.push('/login');
+            } else {
+                alert('Failed to load projects');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        const target = e.target as HTMLInputElement;
+
+        if (name === 'image' && target.files) {
+            setFormData(prev => ({ ...prev, image: target.files?.[0] || null }));
+        } else if (name === 'drawing_photos' && target.files) {
+            const files = Array.from(target.files).slice(0, 4);
+            setDrawingPhotos(files);
+        } else if (name === 'project_photos' && target.files) {
+            const files = Array.from(target.files).slice(0, 4);
+            setProjectPhotos(files);
+        } else if (name === 'project_videos' && target.files) {
+            const files = Array.from(target.files).slice(0, 2);
+            setProjectVideos(files);
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.title || !formData.location) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const submitData = new FormData();
+        Object.keys(formData).forEach(key => {
+            if (key === 'image' && formData.image) {
+                submitData.append('image', formData.image);
+            } else if (key !== 'image') {
+                submitData.append(key, (formData as any)[key]);
+            }
+        });
+
+        // Append multiple files
+        drawingPhotos.forEach(file => {
+            submitData.append('drawing_photos', file);
+        });
+        projectPhotos.forEach(file => {
+            submitData.append('project_photos', file);
+        });
+        projectVideos.forEach(file => {
+            submitData.append('project_videos', file);
+        });
+
+        try {
+            const url = editingProject
+                ? `/api/admin/projects/${editingProject.id}`
+                : '/api/admin/projects';
+            const method = editingProject ? 'PUT' : 'POST';
+
+            const token = getAuthToken();
+            if (!token) {
+                clearAuthData();
+                router.push('/login');
+                return;
+            }
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: submitData,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to save project');
+            }
+
+            alert(`Project ${editingProject ? 'updated' : 'created'} successfully!`);
+            resetForm();
+            fetchProjects();
+        } catch (error) {
+            console.error('Error saving project:', error);
+            alert(`Error: ${error instanceof Error ? error.message : 'Failed to save project'}`);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            status: 'ongoing',
+            project_type: 'residential',
+            title: '',
+            location: '',
+            description: '',
+            start_date: '',
+            completed_date: '',
+            progress: '0',
+            plot_area: '',
+            plinth_area: '',
+            build_up_area: '',
+            image: null,
+            delete_image: false
+        });
+        setDrawingPhotos([]);
+        setProjectPhotos([]);
+        setProjectVideos([]);
+        setEditingProject(null);
+        setShowProjectForm(false);
+    };
+
+    const handleEdit = (project: Project) => {
+        setEditingProject(project);
+        setFormData({
+            status: project.status,
+            project_type: project.project_type,
+            title: project.title,
+            location: project.location,
+            description: project.description || '',
+            start_date: project.start_date || '',
+            completed_date: project.completed_date || '',
+            progress: project.progress?.toString() || '0',
+            plot_area: project.plot_area?.toString() || '',
+            plinth_area: project.plinth_area?.toString() || '',
+            build_up_area: project.build_up_area?.toString() || '',
+            image: null,
+            delete_image: false
+        });
+        setDrawingPhotos([]);
+        setProjectPhotos([]);
+        setProjectVideos([]);
+        setShowProjectForm(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this project?')) {
+            return;
+        }
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                clearAuthData();
+                router.push('/login');
+                return;
+            }
+
+            const response = await fetch(`/api/admin/projects/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete project');
+            }
+
+            alert('Project deleted successfully!');
+            fetchProjects();
+        } catch (error) {
+            console.error('Error deleting project:', error);
+            alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete project'}`);
+        }
+    };
+
+    // User Management Handlers
+    const handleUserInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setUserFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSaveUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userFormData.username || !userFormData.email) {
+            alert('Username and Email are required');
+            return;
+        }
+
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+
+            const url = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
+            const method = editingUser ? 'PUT' : 'POST';
+
+            const body: any = {
+                username: userFormData.username,
+                email: userFormData.email,
+            };
+            if (userFormData.password) {
+                body.password = userFormData.password;
+            }
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to save user');
+            }
+
+            alert(editingUser ? 'User updated successfully' : 'User added successfully');
+            resetUserForm();
+            fetchUsers();
+        } catch (error) {
+            console.error('Error saving user:', error);
+            alert(error instanceof Error ? error.message : 'Failed to save user');
+        }
+    };
+
+    const handleDeleteUser = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this user?')) {
+            return;
+        }
+
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+
+            const response = await fetch(`/api/admin/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to delete user');
+            }
+
+            alert('User deleted successfully');
+            fetchUsers();
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert(error instanceof Error ? error.message : 'Failed to delete user');
+        }
+    };
+
+    const handleEditUser = (user: User) => {
+        setEditingUser(user);
+        setUserFormData({ username: user.username, email: user.email, password: '' });
+        setShowUserForm(true);
+    };
+
+    const resetUserForm = () => {
+        setEditingUser(null);
+        setUserFormData({ username: '', email: '', password: '' });
+        setShowUserForm(false);
+        setShowPassword(false);
+    };
+
+    const handleLogout = () => {
+        clearAuthData();
+        router.push('/login');
+    };
+
+    const exportToCSV = () => {
+        const formatDate = (val?: string) =>
+            val ? new Date(val).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+        if (reportType === 'contacts') {
+            if (!contacts || contacts.length === 0) {
+                alert('No customer responses to export');
+                return;
+            }
+
+            const headers = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Submitted'];
+            const rows = contacts.map((c) => [
+                c.id ?? '',
+                c.full_name ?? '',
+                c.email ?? '',
+                c.phone ?? '',
+                c.subject ?? '',
+                c.message ?? '',
+                formatDate(c.created_at ?? undefined),
+            ]);
+
+            const csvContent = [headers, ...rows]
+                .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\r\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `customer_responses_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        if (!quotations || quotations.length === 0) {
+            alert('No quotation data to export');
+            return;
+        }
+
+        const headers = ['ID', 'Name', 'Email', 'Phone', 'Project Type', 'Budget', 'Details', 'Submitted'];
+        const rows = quotations.map((q) => [
+            q.id ?? '',
+            q.full_name ?? '',
+            q.email ?? '',
+            q.phone ?? '',
+            q.project_type ?? '',
+            q.estimated_budgets ?? '',
+            q.project_details ?? '',
+            formatDate(q.created_at ?? undefined),
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotations_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const ongoingCount = projects.filter(p => p.status === 'ongoing').length;
+    const completedCount = projects.filter(p => p.status === 'completed').length;
+
+    return (
+        <div className="flex flex-1">
+            <div className="w-64 bg-white shadow-xl h-[calc(100vh-64px)] sticky top-16 flex flex-col z-20 border-r border-gray-100">
+                <div className="p-6 border-b border-gray-100 bg-white">
+                    <h1 className="text-xl font-bold text-gray-800 text-center bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Dashboard</h1>
                 </div>
-              </div>
-              {reportLoading ? (
-                <p>Loading {reportType === 'contacts' ? 'customer responses' : 'quotations'}...</p>
-              ) : reportError ? (
-                <p className="text-red-500">{reportError}</p>
-              ) : reportType === 'contacts' ? (
-                contacts.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <div className="max-h-[60vh] overflow-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">ID</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Name</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Email</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Phone</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Subject</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Message</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Submitted</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {contacts.map((c) => (
-                            <tr key={c.id}>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.id}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.full_name}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.email}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.phone ?? '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.subject ?? '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-xs" title={c.message ?? ''}>{c.message ?? '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{c.created_at ? new Date(c.created_at).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <p>No customer responses found.</p>
-                )
-              ) : (
-                quotations.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <div className="max-h-[60vh] overflow-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">ID</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Name</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Email</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Phone</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Project Type</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Budget</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Details</th>
-                            <th className="sticky top-0 px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50 z-20">Submitted</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {quotations.map((q) => (
-                            <tr key={q.id}>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.id}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.full_name}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.email}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.phone}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.project_type}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.estimated_budgets}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.project_details}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700">{q.created_at ? new Date(q.created_at).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <p>No quotations found.</p>
-                )
-              )}
-            </div>
-          ) : (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">Project Management</h2>
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowProjectForm(true);
-                }}
-                className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 flex items-center gap-2"
-              >
-                <FiPlus />
-                Add New Project
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg p-6 text-white">
-                <h3 className="text-lg font-medium">Total Projects</h3>
-                <p className="text-3xl font-bold mt-2">{projects.length}</p>
-              </div>
-              <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-                <h3 className="text-lg font-medium">Ongoing Projects</h3>
-                <p className="text-3xl font-bold mt-2">{ongoingCount}</p>
-              </div>
-              <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-lg p-6 text-white">
-                <h3 className="text-lg font-medium">Completed Projects</h3>
-                <p className="text-3xl font-bold mt-2">{completedCount}</p>
-              </div>
-            </div>
 
-            {showProjectForm && (
-              <div className="bg-white p-6 rounded-lg shadow-md mb-8 border-2 border-cyan-500">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    {editingProject ? 'Edit Project' : 'Add New Project'}
-                  </h3>
-                  <button onClick={resetForm} className="text-gray-500 hover:text-gray-700">
-                    <FiX size={24} />
-                  </button>
+                <div className="flex-1 overflow-y-auto">
+                    <ul className="p-4 space-y-2">
+                        <li>
+                            <button onClick={() => { setActiveSection('dashboard'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'dashboard' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <FiHome className="mr-3" />
+                                Dashboard
+                            </button>
+                        </li>
+                        <li>
+                            <button onClick={() => { setActiveSection('users'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'users' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <FiUsers className="mr-3" />
+                                Users
+                            </button>
+                        </li>
+                        <li>
+                            <button onClick={() => { setActiveSection('tickets'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'tickets' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <FiFileText className="mr-3" />
+                                Problem Tickets
+                            </button>
+                        </li>
+                        <li>
+                            <button onClick={() => { setActiveSection('blogs'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'blogs' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <FiFileText className="mr-3" />
+                                Blogs & Articles
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                onClick={() => setActiveSection('contactreport')}
+                                className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'contactreport' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <FiFileText className="mr-3" />
+                                Contact Report
+                            </button>
+                        </li>
+
+                        <li>
+                            <button
+                                onClick={() => setActiveSection('quotationreport')}
+                                className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'quotationreport' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <FiFileText className="mr-3" />
+                                Quotation Report
+                            </button>
+                        </li>
+                        <li>
+                            <a href="#" className="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                <FiSettings className="mr-3" />
+                                Settings
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
-                      <select
-                        name="status"
-                        value={formData.status}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        required
-                      >
-                        <option value="ongoing">Ongoing</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Project Type *</label>
-                      <select
-                        name="project_type"
-                        value={formData.project_type}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        required
-                      >
-                        <option value="residential">Residential</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="renovation">Renovation</option>
-                        <option value="hospitality">Hospitality</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {formData.status === 'ongoing' ? (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                          <input
-                            type="date"
-                            name="start_date"
-                            value={formData.start_date}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Progress (%)</label>
-                          <input
-                            type="number"
-                            name="progress"
-                            value={formData.progress}
-                            onChange={handleInputChange}
-                            min="0"
-                            max="100"
-                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Completed Date</label>
-                        <input
-                          type="date"
-                          name="completed_date"
-                          value={formData.completed_date}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      rows={4}
-                      className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Plot Area (sq ft)</label>
-                      <input
-                        type="number"
-                        name="plot_area"
-                        value={formData.plot_area}
-                        onChange={handleInputChange}
-                        step="0.01"
-                        min="0"
-                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        placeholder="e.g., 1500.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Plinth Area (sq ft)</label>
-                      <input
-                        type="number"
-                        name="plinth_area"
-                        value={formData.plinth_area}
-                        onChange={handleInputChange}
-                        step="0.01"
-                        min="0"
-                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        placeholder="e.g., 1200.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Build Up Area (sq ft)</label>
-                      <input
-                        type="number"
-                        name="build_up_area"
-                        value={formData.build_up_area}
-                        onChange={handleInputChange}
-                        step="0.01"
-                        min="0"
-                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                        placeholder="e.g., 1000.00"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Project Image</label>
-                    {editingProject?.image_path && !formData.delete_image && (
-                      <div className="mb-2">
-                        <img src={`/uploads/${editingProject.image_path}`} alt={editingProject.title} className="h-32 w-auto rounded" />
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, delete_image: true }))}
-                          className="mt-2 text-red-600 text-sm"
-                        >
-                          Remove Image
-                        </button>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      name="image"
-                      accept="image/*"
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Drawing Photos (Max 4)
-                    </label>
-                    <input
-                      type="file"
-                      name="drawing_photos"
-                      accept="image/*"
-                      multiple
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                    {drawingPhotos.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {drawingPhotos.length} file(s) selected
-                      </p>
-                    )}
-                    {editingProject?.drawing_photos && editingProject.drawing_photos.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.drawing_photos.length} photo(s)</p>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Project Photos (Max 4)
-                    </label>
-                    <input
-                      type="file"
-                      name="project_photos"
-                      accept="image/*"
-                      multiple
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                    {projectPhotos.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {projectPhotos.length} file(s) selected
-                      </p>
-                    )}
-                    {editingProject?.project_photos && editingProject.project_photos.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_photos.length} photo(s)</p>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Project Videos (Max 2)
-                    </label>
-                    <input
-                      type="file"
-                      name="project_videos"
-                      accept="video/*"
-                      multiple
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                    {projectVideos.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {projectVideos.length} file(s) selected
-                      </p>
-                    )}
-                    {editingProject?.project_videos && editingProject.project_videos.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_videos.length} video(s)</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="bg-cyan-600 text-white px-6 py-2 rounded-md hover:bg-cyan-700"
-                    >
-                      {editingProject ? 'Update Project' : 'Create Project'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
 
-            <div className="mb-4 flex gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                >
-                  <option value="all">All</option>
-                  <option value="ongoing">Ongoing</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as any)}
-                  className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                >
-                  <option value="all">All</option>
-                  <option value="residential">Residential</option>
-                  <option value="commercial">Commercial</option>
-                  <option value="renovation">Renovation</option>
-                  <option value="hospitality">Hospitality</option>
-                </select>
-              </div>
+                <div className="p-4 border-t border-gray-200">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        <FiLogOut className="mr-2" />
+                        Logout
+                    </button>
+                </div>
             </div>
 
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
-              </div>
-            ) : projects.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        {filterStatus === 'ongoing' ? 'Start Date / Progress' : 'Completed Date'}
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {projects.map((project) => (
-                      <tr key={project.id}>
-                        <td className="px-4 py-3">
-                          {project.image_path ? (
-                            <img src={`/uploads/${project.image_path}`} alt={project.title} className="h-16 w-24 object-cover rounded" />
-                          ) : (
-                            <div className="h-16 w-24 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            project.status === 'ongoing' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                          }`}>
-                            {project.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 capitalize">{project.project_type}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{project.title}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{project.location}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {project.status === 'ongoing' ? (
-                            <div>
-                              <div>{project.start_date ? new Date(project.start_date).toLocaleDateString() : '-'}</div>
-                              {project.progress !== null && (
-                                <div className="mt-1">
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-cyan-600 h-2 rounded-full" style={{ width: `${project.progress}%` }}></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500">{project.progress}%</span>
-                                </div>
-                              )}
+            <main className="flex-1 p-8 relative z-0">
+                {activeSection === 'contactreport' ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Contact Report</h2>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={fetchContacts}
+                                    className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                                >
+                                    Refresh List
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setReportType('contacts');
+                                        setTimeout(exportToCSV, 100);
+                                    }}
+                                    className="bg-cyan-600 text-white px-3 py-1 rounded text-sm hover:bg-cyan-700"
+                                >
+                                    Export CSV
+                                </button>
                             </div>
-                          ) : (
-                            project.completed_date ? new Date(project.completed_date).toLocaleDateString() : '-'
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
+                        </div>
+
+                        {reportError && (
+                            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
+                                {reportError}
+                            </div>
+                        )}
+
+                        {reportLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {contacts.map((c) => (
+                                            <tr key={c.id}>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{c.full_name}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.email}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.phone || '-'}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.subject || '-'}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs" title={c.message || ''}>
+                                                    <div className="truncate">{c.message}</div>
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button onClick={() => handleContactDelete(c.id)} className="text-red-500 hover:text-red-700">
+                                                        <FiTrash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {contacts.length === 0 && (
+                                    <p className="text-center py-8 text-gray-500">No contact reports found.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : activeSection === 'quotationreport' ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Quotation Report</h2>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={fetchQuotations}
+                                    className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                                >
+                                    Refresh List
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setReportType('quotations');
+                                        setTimeout(exportToCSV, 100);
+                                    }}
+                                    className="bg-cyan-600 text-white px-3 py-1 rounded text-sm hover:bg-cyan-700"
+                                >
+                                    Export CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        {reportError && (
+                            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
+                                {reportError}
+                            </div>
+                        )}
+
+                        {reportLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Budget</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {quotations.map((q) => (
+                                            <tr key={q.id}>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{q.full_name}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.email}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.phone}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{q.project_type}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.estimated_budgets}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs" title={q.project_details || ''}>
+                                                    <div className="truncate">{q.project_details || '-'}</div>
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {q.created_at ? new Date(q.created_at).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button onClick={() => handleQuotationDelete(q.id)} className="text-red-500 hover:text-red-700">
+                                                        <FiTrash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {quotations.length === 0 && (
+                                    <p className="text-center py-8 text-gray-500">No quotation reports found.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : activeSection === 'tickets' ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Problem Ticket Management</h2>
                             <button
-                              onClick={() => handleEdit(project)}
-                              className="text-cyan-600 hover:text-cyan-800"
-                              title="Edit"
+                                onClick={fetchTickets}
+                                className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
                             >
-                              <FiEdit />
+                                Refresh List
                             </button>
+                        </div>
+
+                        {ticketsError && (
+                            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
+                                {ticketsError}
+                            </div>
+                        )}
+
+                        {ticketsLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {tickets.map((t) => (
+                                            <tr key={t.id}>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{t.username}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{t.service_name}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title={t.problem_description}>{t.problem_description}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    <select
+                                                        value={t.status}
+                                                        onChange={(e) => handleTicketStatusUpdate(t.id, e.target.value)}
+                                                        className={`text-xs font-semibold rounded px-2 py-1 outline-none border-none cursor-pointer ${t.status === 'open' ? 'bg-red-50 text-red-600' :
+                                                            t.status === 'solved' ? 'bg-green-50 text-green-600' :
+                                                                'bg-gray-100 text-gray-600'
+                                                            }`}
+                                                    >
+                                                        <option value="open">Open</option>
+                                                        <option value="solved">Solved</option>
+                                                        <option value="closed">Closed</option>
+                                                    </select>
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(t.created_at).toLocaleDateString()}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button onClick={() => handleTicketDelete(t.id)} className="text-red-500 hover:text-red-700">
+                                                        <FiTrash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {tickets.length === 0 && (
+                                    <p className="text-center py-8 text-gray-500">No problem tickets found.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : activeSection === 'blogs' ? (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Blog Management</h2>
                             <button
-                              onClick={() => handleDelete(project.id)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete"
+                                onClick={() => { resetBlogForm(); setShowBlogForm(true); }}
+                                className="bg-cyan-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-cyan-700 transition"
                             >
-                              <FiTrash2 />
+                                <FiPlus className="mr-2" />
+                                Add New Post
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                <p className="text-gray-500">No projects found. Add your first project!</p>
-              </div>
-            )}
-          </div>
-          )}
-        </main>
-      </div>
-    </div>
-  );
+                        </div>
+
+                        {showBlogForm && (
+                            <div className="mb-8 border border-gray-200 rounded-lg p-6 bg-gray-50">
+                                <form onSubmit={handleBlogSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={blogFormData.title}
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, title: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (auto-generated if empty)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={blogFormData.slug}
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, slug: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                                        <textarea
+                                            className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-20 text-gray-900 bg-white"
+                                            value={blogFormData.summary}
+                                            onChange={(e) => setBlogFormData({ ...blogFormData, summary: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Content (Markdown supported) *</label>
+                                        <textarea
+                                            required
+                                            className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-48 text-gray-900 bg-white font-mono text-sm"
+                                            value={blogFormData.content}
+                                            onChange={(e) => setBlogFormData({ ...blogFormData, content: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={blogFormData.author}
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, author: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={blogFormData.category}
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, category: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                            <select
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={blogFormData.status}
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, status: e.target.value as 'draft' | 'published' })}
+                                            >
+                                                <option value="published">Published</option>
+                                                <option value="draft">Draft</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Featured Image</label>
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                                                onChange={(e) => setBlogFormData({ ...blogFormData, image: e.target.files?.[0] || null })}
+                                            />
+                                            {editingBlog?.image_path && (
+                                                <div className="flex items-center gap-2">
+                                                    <img src={`/uploads/${editingBlog.image_path}`} className="h-10 w-10 object-cover rounded" />
+                                                    <label className="flex items-center text-xs text-red-600 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mr-1"
+                                                            checked={blogFormData.delete_image}
+                                                            onChange={(e) => setBlogFormData({ ...blogFormData, delete_image: e.target.checked })}
+                                                        />
+                                                        Delete Current
+                                                    </label>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 justify-end pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={resetBlogForm}
+                                            className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-6 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition"
+                                        >
+                                            {editingBlog ? 'Update Blog' : 'Create Blog'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {blogsLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : blogsError ? (
+                            <div className="text-red-500 text-center py-8">{blogsError}</div>
+                        ) : blogs.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {blogs.map((blog) => (
+                                            <tr key={blog.id}>
+                                                <td className="px-4 py-3">
+                                                    {blog.image_path ? (
+                                                        <img src={`/uploads/${blog.image_path}`} className="h-12 w-20 object-cover rounded" />
+                                                    ) : (
+                                                        <div className="h-12 w-20 bg-gray-100 rounded flex items-center justify-center text-[10px] text-gray-400">No image</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{blog.title}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500">{blog.category || '-'}</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${blog.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                        {blog.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-500">{new Date(blog.created_at).toLocaleDateString()}</td>
+                                                <td className="px-4 py-3 text-sm text-right">
+                                                    <div className="flex gap-3 justify-end">
+                                                        <button onClick={() => handleBlogEdit(blog)} className="text-cyan-600 hover:text-cyan-900">
+                                                            <FiEdit size={16} />
+                                                        </button>
+                                                        <button onClick={() => handleBlogDelete(blog.id)} className="text-red-600 hover:text-red-900">
+                                                            <FiTrash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                                <p className="text-gray-500">No blogs found. Start writing!</p>
+                            </div>
+                        )}
+                    </div>
+                ) : activeSection === 'users' ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">User Management</h2>
+                            <button
+                                onClick={() => {
+                                    resetUserForm();
+                                    setShowUserForm(true);
+                                }}
+                                className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 flex items-center gap-2"
+                            >
+                                <FiPlus />
+                                Add New User
+                            </button>
+                        </div>
+
+                        {showUserForm && (
+                            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border-2 border-cyan-500">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-800">
+                                        {editingUser ? 'Edit User' : 'Add New User'}
+                                    </h3>
+                                    <button onClick={resetUserForm} className="text-gray-500 hover:text-gray-700">
+                                        <FiX size={24} />
+                                    </button>
+                                </div>
+                                <form onSubmit={handleSaveUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+                                        <input
+                                            type="text"
+                                            name="username"
+                                            value={userFormData.username}
+                                            onChange={handleUserInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={userFormData.email}
+                                            onChange={handleUserInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Password {editingUser && '(Leave blank to keep current)'}</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                name="password"
+                                                value={userFormData.password}
+                                                onChange={handleUserInputChange}
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white pr-10"
+                                                required={!editingUser}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none"
+                                            >
+                                                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <button type="button" onClick={resetUserForm} className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700">
+                                            {editingUser ? 'Update User' : 'Create User'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr className="bg-gray-50">
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {users.map((u) => (
+                                        <tr key={u.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.username}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{u.role || 'user'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button onClick={() => handleEditUser(u)} className="text-cyan-600 hover:text-cyan-900 mr-4">
+                                                    <FiEdit size={18} />
+                                                </button>
+                                                <button onClick={() => handleDeleteUser(u.id)} className="text-red-600 hover:text-red-900">
+                                                    <FiTrash2 size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {users.length === 0 && (
+                                <p className="text-center py-4 text-gray-500">No users found.</p>
+                            )}
+                        </div>
+                    </div >
+                ) : (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Project Management</h2>
+                            <button
+                                onClick={() => {
+                                    resetForm();
+                                    setShowProjectForm(true);
+                                }}
+                                className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 flex items-center gap-2"
+                            >
+                                <FiPlus />
+                                Add New Project
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg p-6 text-white">
+                                <h3 className="text-lg font-medium">Total Projects</h3>
+                                <p className="text-3xl font-bold mt-2">{projects.length}</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
+                                <h3 className="text-lg font-medium">Ongoing Projects</h3>
+                                <p className="text-3xl font-bold mt-2">{ongoingCount}</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-lg p-6 text-white">
+                                <h3 className="text-lg font-medium">Completed Projects</h3>
+                                <p className="text-3xl font-bold mt-2">{completedCount}</p>
+                            </div>
+                        </div>
+
+                        {showProjectForm && (
+                            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border-2 border-cyan-500">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-800">
+                                        {editingProject ? 'Edit Project' : 'Add New Project'}
+                                    </h3>
+                                    <button onClick={resetForm} className="text-gray-500 hover:text-gray-700">
+                                        <FiX size={24} />
+                                    </button>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                                            <select
+                                                name="status"
+                                                value={formData.status}
+                                                onChange={handleInputChange}
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                required
+                                            >
+                                                <option value="ongoing">Ongoing</option>
+                                                <option value="completed">Completed</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Project Type *</label>
+                                            <select
+                                                name="project_type"
+                                                value={formData.project_type}
+                                                onChange={handleInputChange}
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                required
+                                            >
+                                                <option value="residential">Residential</option>
+                                                <option value="commercial">Commercial</option>
+                                                <option value="renovation">Renovation</option>
+                                                <option value="hospitality">Hospitality</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            value={formData.title}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                                        <input
+                                            type="text"
+                                            name="location"
+                                            value={formData.location}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {formData.status === 'ongoing' ? (
+                                            <>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                                    <input
+                                                        type="date"
+                                                        name="start_date"
+                                                        value={formData.start_date}
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Progress (%)</label>
+                                                    <input
+                                                        type="number"
+                                                        name="progress"
+                                                        value={formData.progress}
+                                                        onChange={handleInputChange}
+                                                        min="0"
+                                                        max="100"
+                                                        className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Completed Date</label>
+                                                <input
+                                                    type="date"
+                                                    name="completed_date"
+                                                    value={formData.completed_date}
+                                                    onChange={handleInputChange}
+                                                    className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <textarea
+                                            name="description"
+                                            value={formData.description}
+                                            onChange={handleInputChange}
+                                            rows={4}
+                                            className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Plot Area (sq ft)</label>
+                                            <input
+                                                type="number"
+                                                name="plot_area"
+                                                value={formData.plot_area}
+                                                onChange={handleInputChange}
+                                                step="0.01"
+                                                min="0"
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                placeholder="e.g., 1500.00"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Plinth Area (sq ft)</label>
+                                            <input
+                                                type="number"
+                                                name="plinth_area"
+                                                value={formData.plinth_area}
+                                                onChange={handleInputChange}
+                                                step="0.01"
+                                                min="0"
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                placeholder="e.g., 1200.00"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Build Up Area (sq ft)</label>
+                                            <input
+                                                type="number"
+                                                name="build_up_area"
+                                                value={formData.build_up_area}
+                                                onChange={handleInputChange}
+                                                step="0.01"
+                                                min="0"
+                                                className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                                placeholder="e.g., 1000.00"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Image</label>
+                                        {editingProject?.image_path && !formData.delete_image && (
+                                            <div className="mb-2">
+                                                <img src={`/uploads/${editingProject.image_path}`} alt={editingProject.title} className="h-32 w-auto rounded" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, delete_image: true }))}
+                                                    className="mt-2 text-red-600 text-sm"
+                                                >
+                                                    Remove Image
+                                                </button>
+                                            </div>
+                                        )}
+                                        <input
+                                            type="file"
+                                            name="image"
+                                            accept="image/*"
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Drawing Photos (Max 4)
+                                        </label>
+                                        <input
+                                            type="file"
+                                            name="drawing_photos"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        />
+                                        {drawingPhotos.length > 0 && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {drawingPhotos.length} file(s) selected
+                                            </p>
+                                        )}
+                                        {editingProject?.drawing_photos && editingProject.drawing_photos.length > 0 && (
+                                            <div className="mt-2">
+                                                <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.drawing_photos.length} photo(s)</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Project Photos (Max 4)
+                                        </label>
+                                        <input
+                                            type="file"
+                                            name="project_photos"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        />
+                                        {projectPhotos.length > 0 && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {projectPhotos.length} file(s) selected
+                                            </p>
+                                        )}
+                                        {editingProject?.project_photos && editingProject.project_photos.length > 0 && (
+                                            <div className="mt-2">
+                                                <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_photos.length} photo(s)</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Project Videos (Max 2)
+                                        </label>
+                                        <input
+                                            type="file"
+                                            name="project_videos"
+                                            accept="video/*"
+                                            multiple
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        />
+                                        {projectVideos.length > 0 && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {projectVideos.length} file(s) selected
+                                            </p>
+                                        )}
+                                        {editingProject?.project_videos && editingProject.project_videos.length > 0 && (
+                                            <div className="mt-2">
+                                                <p className="text-xs text-gray-600 mb-1">Existing: {editingProject.project_videos.length} video(s)</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="submit"
+                                            className="bg-cyan-600 text-white px-6 py-2 rounded-md hover:bg-cyan-700"
+                                        >
+                                            {editingProject ? 'Update Project' : 'Create Project'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={resetForm}
+                                            className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        <div className="mb-4 flex gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                                <select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                                    className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                >
+                                    <option value="all">All</option>
+                                    <option value="ongoing">Ongoing</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
+                                <select
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value as any)}
+                                    className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                >
+                                    <option value="all">All</option>
+                                    <option value="residential">Residential</option>
+                                    <option value="commercial">Commercial</option>
+                                    <option value="renovation">Renovation</option>
+                                    <option value="hospitality">Hospitality</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {isLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : projects.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {filterStatus === 'ongoing' ? 'Start Date / Progress' : 'Completed Date'}
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {projects.map((project) => (
+                                            <tr key={project.id}>
+                                                <td className="px-4 py-3">
+                                                    {project.image_path ? (
+                                                        <img src={`/uploads/${project.image_path}`} alt={project.title} className="h-16 w-24 object-cover rounded" />
+                                                    ) : (
+                                                        <div className="h-16 w-24 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${project.status === 'ongoing' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                                                        }`}>
+                                                        {project.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-700 capitalize">{project.project_type}</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{project.title}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-700">{project.location}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                    {project.status === 'ongoing' ? (
+                                                        <div>
+                                                            <div>{project.start_date ? new Date(project.start_date).toLocaleDateString() : '-'}</div>
+                                                            {project.progress !== null && (
+                                                                <div className="mt-1">
+                                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                        <div className="bg-cyan-600 h-2 rounded-full" style={{ width: `${project.progress}%` }}></div>
+                                                                    </div>
+                                                                    <span className="text-xs text-gray-500">{project.progress}%</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        project.completed_date ? new Date(project.completed_date).toLocaleDateString() : '-'
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleEdit(project)}
+                                                            className="text-cyan-600 hover:text-cyan-800"
+                                                            title="Edit"
+                                                        >
+                                                            <FiEdit />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(project.id)}
+                                                            className="text-red-600 hover:text-red-800"
+                                                            title="Delete"
+                                                        >
+                                                            <FiTrash2 />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                                <p className="text-gray-500">No projects found. Add your first project!</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </main >
+        </div >
+    );
 }

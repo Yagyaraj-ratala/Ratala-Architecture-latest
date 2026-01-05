@@ -108,14 +108,15 @@ export const Card: React.FC<CardProps> = ({
       <div className="relative z-10 p-5 text-left text-white flex flex-col justify-end h-full group-hover:translate-y-[-6px] transition-all duration-500">
         {/* Use children if provided, otherwise use default content */}
         {children || contentVariants[variant]}
-        
-        <Link
-          href={href}
-          className="inline-block bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:scale-105 hover:shadow-lg transition-all"
-        >
-          {variant === "project" ? "View Project" : 
-           variant === "service" ? "Learn More" : "Read More"}
-        </Link>
+
+        {variant !== "service" && (
+          <Link
+            href={href}
+            className="inline-block bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:scale-105 hover:shadow-lg transition-all"
+          >
+            {variant === "project" ? "View Project" : "Read More"}
+          </Link>
+        )}
       </div>
     </motion.div>
   );

@@ -1,17 +1,10 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { writeFile, unlink } from 'fs/promises';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync } from 'fs';
-
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'ratala_architecture',
-  password: 'SYSTEM',
-  port: 5432,
-});
+import { requireAuth } from '@/lib/auth';
 
 const uploadDir = join(process.cwd(), 'public', 'uploads');
 if (!existsSync(uploadDir)) {
@@ -24,17 +17,27 @@ function generateFileName(originalName: string): string {
   return `${randomString}.${ext}`;
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const type = searchParams.get('type');
-
-  let client;
+export async function GET(request: NextRequest) {
   try {
-    client = await pool.connect();
+    await requireAuth(request);
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: 'Unauthorized',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const type = searchParams.get('type');
+
     let query = 'SELECT * FROM projects ORDER BY created_at DESC';
     const params: any[] = [];
-    
+
     if (status || type) {
       const conditions: string[] = [];
       if (status) {
@@ -48,19 +51,22 @@ export async function GET(request: Request) {
       query = `SELECT * FROM projects WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
     }
 
-    const result = await client.query(query, params);
+    const result = await db.query(query, params);
     return NextResponse.json(result.rows);
   } catch (error) {
+    if (error instanceof Error && (error.message === 'Unauthorized' || (error as any).status === 401)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error fetching projects:', error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }
 
-export async function POST(request: Request) {
-  let client;
+export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    await requireAuth(request);
+
     const formData = await request.formData();
     const status = formData.get('status') as string;
     const projectType = formData.get('project_type') as string;
@@ -144,13 +150,12 @@ export async function POST(request: Request) {
       }
     }
 
-    client = await pool.connect();
     const progressValue = status === 'ongoing' && progress ? parseInt(progress) : null;
     const plotAreaValue = plotArea ? parseFloat(plotArea) : null;
     const plinthAreaValue = plinthArea ? parseFloat(plinthArea) : null;
     const buildUpAreaValue = buildUpArea ? parseFloat(buildUpArea) : null;
-    
-    const result = await client.query(
+
+    const result = await db.query(
       `INSERT INTO projects (status, project_type, title, location, description, image_path, start_date, completed_date, progress, plot_area, plinth_area, build_up_area, drawing_photos, project_photos, project_videos, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
        RETURNING *`,
@@ -177,8 +182,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating project:', error);
     return NextResponse.json({ error: 'Failed to create project' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }
 

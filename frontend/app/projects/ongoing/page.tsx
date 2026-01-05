@@ -51,10 +51,10 @@ export default function OngoingProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch('/api/admin/projects?status=ongoing');
+        const response = await fetch('/api/projects?status=ongoing');
         if (!response.ok) throw new Error('Failed to fetch projects');
         const data: ApiProject[] = await response.json();
-        
+
         const mappedProjects: OngoingProject[] = data.map((project) => ({
           id: project.id,
           title: project.title,
@@ -72,7 +72,7 @@ export default function OngoingProjectsPage() {
           projectPhotos: Array.isArray(project.project_photos) ? project.project_photos.map((p: string) => `/uploads/${p}`) : [],
           projectVideos: Array.isArray(project.project_videos) ? project.project_videos.map((v: string) => `/uploads/${v}`) : []
         }));
-        
+
         setProjects(mappedProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
@@ -121,97 +121,97 @@ export default function OngoingProjectsPage() {
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {projects.map((project, index) => (
-            <motion.div
-              key={project.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-white"
-              onClick={() => setSelectedProject(project)}
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  onError={(e) => {
-                    e.currentTarget.src = '/projects/ImageR1.jpg';
-                  }}
-                />
-                <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
-                  <Clock size={16} />
-                  In Progress
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </div>
-              
-              <div className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="text-cyan-500" size={18} />
-                  <span className="text-sm font-semibold text-cyan-600">{project.category}</span>
-                </div>
-                
-                <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-cyan-600 transition-colors">
-                  {project.title}
-                </h3>
-                
-                <div className="space-y-3 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-gray-400" />
-                    <span>{project.location}</span>
+              <motion.div
+                key={project.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-white"
+                onClick={() => setSelectedProject(project)}
+              >
+                <div className="relative h-64 overflow-hidden">
+                  <img
+                    src={project.image}
+                    alt={project.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                      e.currentTarget.src = '/projects/ImageR1.jpg';
+                    }}
+                  />
+                  <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm font-semibold">
+                    <Clock size={16} />
+                    In Progress
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span>Started: {new Date(project.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                  </div>
-                  {(project.plotArea || project.plinthArea || project.buildUpArea) && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Area Details</h4>
-                      <div className="space-y-2.5">
-                        {project.plotArea && (
-                          <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
-                            <span className="text-sm font-medium text-gray-700">Plot Area</span>
-                            <span className="text-sm font-semibold text-cyan-600">{project.plotArea.toLocaleString()} sq ft</span>
-                          </div>
-                        )}
-                        {project.plinthArea && (
-                          <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
-                            <span className="text-sm font-medium text-gray-700">Plinth Area</span>
-                            <span className="text-sm font-semibold text-cyan-600">{project.plinthArea.toLocaleString()} sq ft</span>
-                          </div>
-                        )}
-                        {project.buildUpArea && (
-                          <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
-                            <span className="text-sm font-medium text-gray-700">Build Up Area</span>
-                            <span className="text-sm font-semibold text-cyan-600">{project.buildUpArea.toLocaleString()} sq ft</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Progress</span>
-                    <span className="text-sm font-semibold text-cyan-600">{project.progress}%</span>
+                <div className="p-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="text-cyan-500" size={18} />
+                    <span className="text-sm font-semibold text-cyan-600">{project.category}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${project.progress}%` }}
-                      transition={{ duration: 1, delay: index * 0.1 }}
-                      className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full"
-                    />
+
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-cyan-600 transition-colors">
+                    {project.title}
+                  </h3>
+
+                  <div className="space-y-3 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-gray-400" />
+                      <span>{project.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-gray-400" />
+                      <span>Started: {new Date(project.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                    {(project.plotArea || project.plinthArea || project.buildUpArea) && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Area Details</h4>
+                        <div className="space-y-2.5">
+                          {project.plotArea && (
+                            <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
+                              <span className="text-sm font-medium text-gray-700">Plot Area</span>
+                              <span className="text-sm font-semibold text-cyan-600">{project.plotArea.toLocaleString()} sq ft</span>
+                            </div>
+                          )}
+                          {project.plinthArea && (
+                            <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
+                              <span className="text-sm font-medium text-gray-700">Plinth Area</span>
+                              <span className="text-sm font-semibold text-cyan-600">{project.plinthArea.toLocaleString()} sq ft</span>
+                            </div>
+                          )}
+                          {project.buildUpArea && (
+                            <div className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
+                              <span className="text-sm font-medium text-gray-700">Build Up Area</span>
+                              <span className="text-sm font-semibold text-cyan-600">{project.buildUpArea.toLocaleString()} sq ft</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Progress</span>
+                      <span className="text-sm font-semibold text-cyan-600">{project.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${project.progress}%` }}
+                        transition={{ duration: 1, delay: index * 0.1 }}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 mt-4 line-clamp-2">
+                    {project.description}
+                  </p>
                 </div>
-                
-                <p className="text-gray-600 mt-4 line-clamp-2">
-                  {project.description}
-                </p>
-              </div>
-            </motion.div>
+              </motion.div>
             ))}
           </div>
         ) : (
@@ -225,8 +225,8 @@ export default function OngoingProjectsPage() {
 
       {/* Project Detail Modal */}
       {selectedProject && (
-        <div 
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedProject(null)}
         >
           <motion.div
@@ -235,7 +235,7 @@ export default function OngoingProjectsPage() {
             className="relative max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
               onClick={() => setSelectedProject(null)}
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10 bg-white rounded-full p-2 shadow-lg"
             >
@@ -243,7 +243,7 @@ export default function OngoingProjectsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            
+
             <div className="relative h-96">
               <img
                 src={selectedProject.image}
@@ -258,17 +258,17 @@ export default function OngoingProjectsPage() {
                 In Progress
               </div>
             </div>
-            
+
             <div className="p-8">
               <div className="flex items-center gap-2 mb-4">
                 <Building2 className="text-cyan-500" size={20} />
                 <span className="text-sm font-semibold text-cyan-600">{selectedProject.category}</span>
               </div>
-              
+
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 {selectedProject.title}
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="flex items-center gap-2 text-gray-600">
                   <MapPin size={18} className="text-gray-400" />
@@ -327,7 +327,7 @@ export default function OngoingProjectsPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Project Description</h3>
                 <p className="text-gray-600 leading-relaxed">
@@ -353,8 +353,8 @@ export default function OngoingProjectsPage() {
 
       {/* Gallery Modal */}
       {showGallery && selectedProject && (
-        <div 
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" 
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
           onClick={() => setShowGallery(false)}
         >
           <motion.div
@@ -363,16 +363,16 @@ export default function OngoingProjectsPage() {
             className="relative max-w-6xl w-full max-h-[90vh] overflow-y-auto bg-gray-900 rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
               onClick={() => setShowGallery(false)}
               className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-gray-800 rounded-full p-2 shadow-lg"
             >
               <X size={24} />
             </button>
-            
+
             <div className="p-8">
               <h2 className="text-3xl font-bold text-white mb-8">{selectedProject.title} - Gallery</h2>
-              
+
               {/* Drawing Photos */}
               {selectedProject.drawingPhotos && selectedProject.drawingPhotos.length > 0 && (
                 <div className="mb-8">
