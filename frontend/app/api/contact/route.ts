@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'ratala_architecture',
-  password: 'SYSTEM',
-  port: 5432,
-});
+import { db } from '@/lib/db';
 
 export async function POST(request: Request) {
-  let client;
   try {
     const body = await request.json();
 
@@ -18,9 +9,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    client = await pool.connect();
-    const result = await client.query(
-      `INSERT INTO public.contact_us (full_name, email, phone, subject, message, created_at)
+    const result = await db.query(
+      `INSERT INTO public.contact (full_name, email, phone, subject, message, created_at)
        VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id, created_at`,
       [body.full_name, body.email, body.phone || null, body.subject || null, body.message || null]
     );
@@ -29,7 +19,5 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error inserting contact_us row:', error);
     return NextResponse.json({ error: 'Failed to submit contact' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }

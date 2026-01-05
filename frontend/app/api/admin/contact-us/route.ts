@@ -1,24 +1,19 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'ratala_architecture',
-  password: 'SYSTEM',
-  port: 5432,
-});
-
-export async function GET() {
-  let client;
+export async function GET(request: NextRequest) {
   try {
-    client = await pool.connect();
-    const result = await client.query(`SELECT * FROM public.contact_us ORDER BY id DESC`);
+    // Verify authentication
+    await requireAuth(request);
+
+    const result = await db.query(`SELECT * FROM public.contact ORDER BY id DESC`);
     return NextResponse.json(result.rows);
-  } catch (error) {
-    console.error('Error fetching contact_us rows:', error);
-    return NextResponse.json({ error: 'Failed to fetch customer responses' }, { status: 500 });
-  } finally {
-    if (client) client.release();
+  } catch (error: any) {
+    if (error.message === 'Unauthorized' || error.status === 401) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('Error fetching contact rows:', error);
+    return NextResponse.json({ error: 'Failed to fetch contact reports' }, { status: 500 });
   }
 }

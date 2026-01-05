@@ -2,19 +2,15 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import {
-  FaPhoneAlt,
-  FaFacebookF,
-  FaInstagram,
-  FaLinkedinIn,
-  FaYoutube,
   FaBars,
   FaTimes,
   FaUser,
   FaChevronDown,
 } from "react-icons/fa";
-import { MdEmail } from "react-icons/md";
 import dynamic from 'next/dynamic';
+import { isAuthenticated, clearAuthData } from "@/lib/auth-storage"; // Import auth utils
 
 
 // Import Modal component
@@ -70,8 +66,11 @@ const Button: React.FC<ButtonProps> = ({
 };
 
 const Header: React.FC = () => {
+  const router = useRouter(); // Use router
+  const pathname = usePathname(); // Get current pathname
   const [isSticky, setIsSticky] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Auth state checking
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(false);
   const [isMobileProjectsOpen, setIsMobileProjectsOpen] = useState(false);
@@ -79,7 +78,12 @@ const Header: React.FC = () => {
   const projectsButtonRef = useRef<HTMLButtonElement>(null);
   const projectsDropdownRef = useRef<HTMLDivElement>(null);
   const hoverLockRef = useRef(false);
-  
+
+  // Helper to check if a link is active
+  const isActive = (href: string) => {
+    if (href === '/' && pathname !== '/') return false;
+    return pathname.startsWith(href);
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsSticky(window.scrollY > 50);
@@ -89,11 +93,33 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsSpinning(true);
       setTimeout(() => setIsSpinning(false), 2000);
     }, 8000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    const checkAuth = () => setIsLoggedIn(isAuthenticated());
+    checkAuth();
+
+    // Listen for storage events (e.g. login from another tab)
+    const handleStorageChange = () => checkAuth();
+    window.addEventListener('storage', handleStorageChange);
+
+    // Custom event to updated state immediately after login/logout
+    window.addEventListener('auth-update', checkAuth);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-update', checkAuth);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    clearAuthData();
+    setIsLoggedIn(false);
+    window.dispatchEvent(new Event('auth-update')); // Notify other components
+    router.push('/');
+  };
 
   useEffect(() => {
     if (!isProjectsDropdownOpen || !isProjectsClicked) {
@@ -105,7 +131,7 @@ const Header: React.FC = () => {
       const clickedOnButton = projectsButtonRef.current?.contains(target);
       const clickedInDropdown = projectsDropdownRef.current?.contains(target);
       const clickedInContainer = target.closest('.projects-dropdown-container');
-      
+
       if (!clickedOnButton && !clickedInDropdown && !clickedInContainer) {
         setIsProjectsDropdownOpen(false);
         setIsProjectsClicked(false);
@@ -125,13 +151,12 @@ const Header: React.FC = () => {
   const handleLinkClick = () => setIsMobileMenuOpen(false);
 
   const navItems = [
-    { href: "/", label: "Home", isActive: true },
+    { href: "/", label: "Home" },
     { href: "/about", label: "About Us" },
     { href: "/services", label: "Services" },
     { href: "/cost-calculator", label: "Cost Calculator" },
     { href: "/blogs", label: "Blogs & Articles" },
     { href: "/contact", label: "Contact" },
-    { href: "/login", label: "Admin" },
   ];
 
   const projectsSubmenu = [
@@ -139,7 +164,7 @@ const Header: React.FC = () => {
     { href: "/projects/ongoing", label: "Ongoing Projects" },
   ];
 
-  
+
 
   const NavigationLinks = ({ isSticky = false }) => {
     const servicesIndex = navItems.findIndex(item => item.href === "/services");
@@ -152,16 +177,15 @@ const Header: React.FC = () => {
           <li key={item.href}>
             <Link
               href={item.href}
-              className={`${
-                item.isActive ? "text-cyan-500" : "hover:text-cyan-500"
-              } transition-colors whitespace-nowrap px-2`}
+              className={`${isActive(item.href) ? "text-cyan-500 underline decoration-2 underline-offset-8" : "hover:text-cyan-500"
+                } transition-all duration-300 whitespace-nowrap px-2`}
               onClick={handleLinkClick}
             >
               {item.label}
             </Link>
           </li>
         ))}
-        <li 
+        <li
           className="relative group projects-dropdown-container"
           style={{ paddingBottom: isProjectsDropdownOpen && isProjectsClicked ? '8px' : '0' }}
           onMouseEnter={() => {
@@ -185,7 +209,7 @@ const Header: React.FC = () => {
               setTimeout(() => {
                 hoverLockRef.current = false;
               }, 300);
-              
+
               setIsProjectsDropdownOpen(prevOpen => {
                 const newOpen = !prevOpen;
                 setIsProjectsClicked(newOpen);
@@ -202,13 +226,16 @@ const Header: React.FC = () => {
                 setIsProjectsDropdownOpen(false);
               }
             }}
-            className="flex items-center gap-1 hover:text-cyan-500 transition-colors whitespace-nowrap px-2"
+            className={`flex items-center gap-1 transition-all duration-300 whitespace-nowrap px-2 ${projectsSubmenu.some(sub => isActive(sub.href))
+                ? "text-cyan-500 underline decoration-2 underline-offset-8"
+                : "hover:text-cyan-500"
+              }`}
           >
             Projects
             <FaChevronDown className={`text-xs transition-transform duration-200 ${isProjectsDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           {isProjectsDropdownOpen && (
-            <div 
+            <div
               ref={projectsDropdownRef}
               className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 projects-dropdown-menu"
               onMouseEnter={() => {
@@ -239,20 +266,21 @@ const Header: React.FC = () => {
             </div>
           )}
         </li>
-        {afterProjects.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={`${
-                item.isActive ? "text-cyan-500" : "hover:text-cyan-500"
-              } transition-colors whitespace-nowrap px-2`}
-              onClick={handleLinkClick}
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+        {
+          afterProjects.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`${isActive(item.href) ? "text-cyan-500 underline decoration-2 underline-offset-8" : "hover:text-cyan-500"
+                  } transition-all duration-300 whitespace-nowrap px-2`}
+                onClick={handleLinkClick}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))
+        }
+      </ul >
     );
   };
 
@@ -266,11 +294,10 @@ const Header: React.FC = () => {
           >
             <Link
               href={item.href}
-              className={`block py-4 ${
-                item.isActive
-                  ? "text-cyan-500 font-semibold"
-                  : "text-gray-800 hover:text-cyan-500"
-              } text-lg transition-colors`}
+              className={`block py-4 ${isActive(item.href)
+                ? "text-cyan-500 font-semibold pl-2 border-l-4 border-cyan-500"
+                : "text-gray-800 hover:text-cyan-500"
+                } text-lg transition-all duration-300`}
               onClick={handleLinkClick}
             >
               {item.label}
@@ -281,7 +308,10 @@ const Header: React.FC = () => {
         <li className="border-b border-gray-100">
           <button
             onClick={() => setIsMobileProjectsOpen(!isMobileProjectsOpen)}
-            className="flex items-center justify-between w-full py-4 text-gray-800 hover:text-cyan-500 text-lg transition-colors"
+            className={`flex items-center justify-between w-full py-4 text-lg transition-all duration-300 ${projectsSubmenu.some(sub => isActive(sub.href))
+              ? "text-cyan-500 font-semibold pl-2 border-l-4 border-cyan-500"
+              : "text-gray-800 hover:text-cyan-500"
+              }`}
           >
             Projects
             <FaChevronDown className={`text-xs transition-transform duration-200 ${isMobileProjectsOpen ? 'rotate-180' : ''}`} />
@@ -309,33 +339,8 @@ const Header: React.FC = () => {
     </div>
   );
 
-  const TopInfoBar = () => (
-    <div className="bg-cyan-500 text-white w-full">
-      <div className="max-w-[95vw] mx-auto flex flex-wrap items-center justify-between py-2 px-3 sm:px-6">
-        <div className="flex flex-wrap items-center gap-3 text-sm sm:text-base">
-          <div className="flex items-center space-x-2">
-            <FaPhoneAlt className="text-white text-sm" />
-            <span>+9779851325508</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <MdEmail className="text-white text-sm" />
-            <span className="hidden sm:inline">info@ratalaarchitecture.com</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 mt-2 sm:mt-0">
-          <a href="#" className="hover:text-gray-200"><FaFacebookF /></a>
-          <a href="#" className="hover:text-gray-200"><FaYoutube /></a>
-          <a href="#" className="hover:text-gray-200"><FaLinkedinIn /></a>
-          <a href="#" className="hover:text-gray-200"><FaInstagram /></a>
-        </div>
-      </div>
-    </div>
-  );
-
-  const MainNavbar = ({ showTopBar = true, isStickyVersion = false }) => (
+  const MainNavbar = ({ isStickyVersion = false }) => (
     <div className="w-full bg-white shadow-sm">
-      {showTopBar && <div className="hidden sm:block"><TopInfoBar /></div>}
 
       <div className="w-full max-w-[95vw] mx-auto flex items-center justify-between h-24 sm:h-24 lg:h-28 px-4 sm:px-6 border-b border-gray-100">
         <div className="flex items-center space-x-4 lg:hidden">
@@ -351,7 +356,7 @@ const Header: React.FC = () => {
             )}
           </button>
         </div>
-        
+
         {/* Logo */}
         <img
           src="/logo.png"
@@ -366,7 +371,7 @@ const Header: React.FC = () => {
 
         {/* Right side items */}
         <div className="flex items-center gap-3">
-          
+
           {/* Mobile Menu Button */}
           <div className="lg:hidden">
             <button
@@ -377,14 +382,26 @@ const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Consistent Gradient Button */}
-          <Button
-            size="md"
-            animated={!isSpinning}
-            spinning={isSpinning}
-          >
-            Get Free AI Quote
-          </Button>
+          {/* Consistent Gradient Button - Login/Logout */}
+          {isLoggedIn ? (
+            <Button
+              size="md"
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 from-red-500 to-red-600 border-red-400"
+            >
+              Logout
+            </Button>
+          ) : (
+            <Link href="/login">
+              <Button
+                size="md"
+                animated={!isSpinning}
+                spinning={isSpinning}
+              >
+                Login
+              </Button>
+            </Link>
+          )}
 
         </div>
       </div>
@@ -420,14 +437,14 @@ const Header: React.FC = () => {
       {/* Normal Header */}
       {!isSticky && (
         <div className="absolute top-0 left-0 w-full z-40 transition-all duration-300">
-          <MainNavbar showTopBar={true} isStickyVersion={false} />
+          <MainNavbar isStickyVersion={false} />
         </div>
       )}
 
       {/* Sticky Header */}
       {isSticky && (
         <div className="fixed top-0 left-0 w-full z-50 transition-all duration-300">
-          <MainNavbar showTopBar={false} isStickyVersion={true} />
+          <MainNavbar isStickyVersion={true} />
           {isMobileMenuOpen && <MobileMenu />}
         </div>
       )}

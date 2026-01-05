@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Phone, Mail, MapPin } from "lucide-react";
+import { X, Phone, Mail, MapPin, User, MessageSquare, Briefcase, DollarSign, Send } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Reusable Button Component (same as header)
 interface ButtonProps {
@@ -89,6 +90,7 @@ export default function HomeHero() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -106,13 +108,13 @@ export default function HomeHero() {
       subtitle: "Innovative 3D visualization and cutting-edge architectural solutions",
       features: [
         "3D Design Visualization",
-        "Sustainable Architecture", 
+        "Sustainable Architecture",
         "Modern Construction Techniques",
         "Project Management"
       ],
       primaryButton: {
         text: "View Portfolio",
-        action: () => router.push('/projects')
+        action: () => router.push('/projects/completed')
       }
     },
     {
@@ -126,8 +128,8 @@ export default function HomeHero() {
         "Lighting Design"
       ],
       primaryButton: {
-        text: "Explore Interiors",
-        action: () => router.push('/interiors')
+        text: "Explore Services",
+        action: () => router.push('/services')
       }
     },
     {
@@ -141,8 +143,8 @@ export default function HomeHero() {
         "Eco-friendly Solutions"
       ],
       primaryButton: {
-        text: "Green Projects",
-        action: () => router.push('/sustainability')
+        text: "Ongoing projects",
+        action: () => router.push('/projects/ongoing')
       }
     }
   ];
@@ -169,7 +171,8 @@ export default function HomeHero() {
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setIsSubmitting(true);
+
     try {
       const response = await fetch('/api/submit-quote', {
         method: 'POST',
@@ -200,6 +203,8 @@ export default function HomeHero() {
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('There was an error submitting your request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -240,9 +245,8 @@ export default function HomeHero() {
           {slides.map((slide, index) => (
             <div
               key={slide.image}
-              className={`absolute inset-0 bg-cover bg-center animate-cinematicDrift transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-100" : "opacity-0"
-              }`}
+              className={`absolute inset-0 bg-cover bg-center animate-cinematicDrift transition-opacity duration-1000 ${index === currentSlide ? "opacity-100" : "opacity-0"
+                }`}
               style={{ backgroundImage: `url(${slide.image})` }}
             />
           ))}
@@ -300,7 +304,7 @@ export default function HomeHero() {
                     variant="outline"
                     size="md"
                   >
-                    AI-Powered Instant Quote
+                    Consult our team
                   </Button>
                 </div>
               </div>
@@ -332,7 +336,7 @@ export default function HomeHero() {
                     onClick={() => setIsQuoteModalOpen(true)}
                     size="lg"
                     animated={true}
-                     className="w-auto px-10 mx-auto block"
+                    className="w-auto px-10 mx-auto block"
                   >
                     Get Free Consultation
                   </Button>
@@ -348,11 +352,10 @@ export default function HomeHero() {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
-                index === currentSlide
-                  ? 'bg-white scale-125'
-                  : 'bg-white/50 hover:bg-white/80'
-              }`}
+              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${index === currentSlide
+                ? 'bg-white scale-125'
+                : 'bg-white/50 hover:bg-white/80'
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
@@ -361,136 +364,166 @@ export default function HomeHero() {
 
 
       {/* Get Free Quote Modal */}
-      {isQuoteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-800">Get Free Quote</h2>
-              <button
-                onClick={() => setIsQuoteModalOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      <AnimatePresence>
+        {isQuoteModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsQuoteModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
+            />
 
-            {/* Modal Content */}
-            <div className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                      placeholder="your@email.com"
-                    />
-                  </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-white/20"
+            >
+              {/* Decorative Header Background */}
+              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-cyan-600 to-blue-700 -z-10 opacity-10" />
+
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-8 pb-4 relative">
+                <div>
+                  <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                    Get Free <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-600">Consultation</span>
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">Transform your vision into architectural reality.</p>
                 </div>
+                <button
+                  onClick={() => setIsQuoteModalOpen(false)}
+                  className="p-2.5 bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-900 rounded-full transition-all duration-300 shadow-sm"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                      placeholder="+977 98XXXXXXX"
-                    />
+              {/* Modal Content */}
+              <div className="p-8 pt-4 overflow-y-auto max-h-[calc(90vh-100px)]">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                        <User className="w-4 h-4 text-cyan-500" /> Full Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                        <Mail className="w-4 h-4 text-cyan-500" /> Email Address
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800"
+                        placeholder="john@example.com"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Project Type *
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                        <Phone className="w-4 h-4 text-cyan-500" /> Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800"
+                        placeholder="+977 98XXXXXXXX"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                        <Briefcase className="w-4 h-4 text-cyan-500" /> Project Type
+                      </label>
+                      <select
+                        name="projectType"
+                        value={formData.projectType}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800 appearance-none cursor-pointer"
+                      >
+                        <option value="">Select project type</option>
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="interior">Interior Design</option>
+                        <option value="renovation">Renovation</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                      <DollarSign className="w-4 h-4 text-cyan-500" /> Estimated Budget
                     </label>
                     <select
-                      name="projectType"
-                      value={formData.projectType}
+                      name="budget"
+                      value={formData.budget}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800 appearance-none cursor-pointer"
                     >
-                      <option value="">Select project type</option>
-                      <option value="residential">Residential</option>
-                      <option value="commercial">Commercial</option>
-                      <option value="interior">Interior Design</option>
-                      <option value="renovation">Renovation</option>
-                      <option value="other">Other</option>
+                      <option value="">Select budget range</option>
+                      <option value="5-10">5-10 Lakhs</option>
+                      <option value="10-25">10-25 Lakhs</option>
+                      <option value="25-50">25-50 Lakhs</option>
+                      <option value="50-100">50 Lakhs - 1 Crore</option>
+                      <option value="100+">1 Crore+</option>
                     </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estimated Budget *
-                  </label>
-                  <select
-                    name="budget"
-                    value={formData.budget}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  >
-                    <option value="">Select budget range</option>
-                    <option value="5-10">5-10 Lakhs</option>
-                    <option value="10-25">10-25 Lakhs</option>
-                    <option value="25-50">25-50 Lakhs</option>
-                    <option value="50-100">50 Lakhs - 1 Crore</option>
-                    <option value="100+">1 Crore+</option>
-                  </select>
-                </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 ml-1">
+                      <MessageSquare className="w-4 h-4 text-cyan-500" /> Project Details
+                    </label>
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all text-gray-800 resize-none"
+                      placeholder="Tell us about your project requirements, location, timeline, etc."
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Details
-                  </label>
-                  <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                    placeholder="Tell us about your project requirements, location, timeline, etc."
-                  />
-                </div>
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-200 hover:shadow-cyan-300 transition-all duration-300 transform active:scale-95 disabled:grayscale"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isSubmitting ? "Sending..." : "Submit Quote Request"}
+                    </button>
+                  </div>
 
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-auto px-10 mx-auto block"
-                >
-                  Submit Quote Request
-                </Button>
-              </form>
-            </div>
+                  <p className="text-center text-[10px] text-gray-400 mt-4">
+                    * Our experts will contact you within 24 hours of submission.
+                  </p>
+                </form>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,52 +1,108 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Typography } from '@/app/components/ui/Typography';
 import { Button } from '@/app/components/ui/Button';
+import { setAuthTokenWithExpiration, setAuthStatus, setUserData, clearAuthData, getAuthToken } from '@/lib/auth-storage';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Redirect to admin if already authenticated
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      // Verify token is still valid
+      fetch('/api/auth/verify', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+        .then((res) => {
+          if (res.ok) {
+            router.replace('/admin');
+          } else {
+            // Token is invalid, clear it
+            clearAuthData();
+          }
+        })
+        .catch(() => {
+          // Error verifying, clear token
+          clearAuthData();
+        });
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Hardcoded credentials with exact matching
-    const validEmail = 'info@ratalaarchitecture.com';
-    const validPassword = 'Ratala@12345';
-
-    // Strict comparison for both email and password
-    if (email.trim() !== validEmail || password !== validPassword) {
-      setError('Bad credentials');
+    if (!email.trim() || !password) {
+      setError('Please enter both email and password');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Store authentication state
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('user', JSON.stringify({
-        email: validEmail,
-        name: 'Yagya'
-      }));
-      
-      // Redirect to admin page after successful login
-      router.push('/admin');
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      const data = await response.json();
+
+      // Check if login was successful
+      if (response.ok && data.token) {
+        // Store token and user info using secure storage functions with expiration
+        const tokenStored = setAuthTokenWithExpiration(data.token, rememberMe);
+        const statusStored = setAuthStatus(true);
+        const userStored = setUserData(data.user);
+
+        if (!tokenStored || !statusStored || !userStored) {
+          clearAuthData();
+          throw new Error('Failed to save authentication data. Please check your browser settings and ensure cookies/localStorage are enabled.');
+        }
+
+        // Verify that the token was actually stored
+        const storedToken = getAuthToken();
+        if (!storedToken || storedToken !== data.token) {
+          clearAuthData();
+          throw new Error('Failed to verify stored authentication token. Please try again.');
+        }
+
+        // Small delay to ensure localStorage is fully written and persisted
+        await new Promise(resolve => setTimeout(resolve, 150));
+
+        // Double-check token is still there after delay
+        const finalCheck = getAuthToken();
+        if (!finalCheck || finalCheck !== data.token) {
+          clearAuthData();
+          throw new Error('Authentication token was not persisted. Please try again.');
+        }
+
+        // Use window.location for a hard redirect to ensure it works
+        // This ensures the page fully reloads and the admin layout can verify the token
+        window.location.href = '/admin';
+        return; // Don't set loading to false as we're redirecting
+      } else {
+        // Login failed - show error
+        throw new Error(data.error || 'Invalid email or password');
+      }
     } catch (err) {
-      setError('An error occurred during login');
-    } finally {
+      setError(err instanceof Error ? err.message : 'An error occurred during login');
       setIsLoading(false);
     }
   };
@@ -169,6 +225,8 @@ export default function LoginPage() {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">

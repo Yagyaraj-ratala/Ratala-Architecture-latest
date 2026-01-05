@@ -45,16 +45,24 @@ export default function ProjectsShowcase() {
       try {
         // Fetch both completed and ongoing projects
         const [completedRes, ongoingRes] = await Promise.all([
-          fetch('/api/admin/projects?status=completed'),
-          fetch('/api/admin/projects?status=ongoing')
+          fetch('/api/projects?status=completed'),
+          fetch('/api/projects?status=ongoing')
         ]);
 
-        const completedProjects: ApiProject[] = completedRes.ok ? await completedRes.json() : [];
-        const ongoingProjects: ApiProject[] = ongoingRes.ok ? await ongoingRes.json() : [];
+        if (!completedRes.ok || !ongoingRes.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+
+        const completedProjects: ApiProject[] = await completedRes.json();
+        const ongoingProjects: ApiProject[] = await ongoingRes.json();
 
         // Combine and shuffle all projects
         const allProjects = [...completedProjects, ...ongoingProjects];
-        
+
+        if (allProjects.length === 0) {
+          throw new Error('No projects in database');
+        }
+
         // Shuffle array function
         const shuffleArray = <T,>(array: T[]): T[] => {
           const shuffled = [...array];
@@ -65,8 +73,8 @@ export default function ProjectsShowcase() {
           return shuffled;
         };
 
-        // Shuffle and take first 4 projects
-        const shuffledProjects = shuffleArray(allProjects).slice(0, 4);
+        // Shuffle and take first 3 projects
+        const shuffledProjects = shuffleArray(allProjects).slice(0, 3);
 
         // Map to display format
         const mappedProjects: DisplayProject[] = shuffledProjects.map((project) => ({
@@ -101,13 +109,6 @@ export default function ProjectsShowcase() {
             title: "Himalayan Resort Design",
             location: "Pokhara, Nepal",
             category: "Hospitality",
-            href: "/projects/completed",
-          },
-          {
-            image: "/projects/ImageR3.jpg",
-            title: "Elegant Home Renovation",
-            location: "Bhaktapur, Nepal",
-            category: "Renovation",
             href: "/projects/completed",
           },
         ]);
@@ -165,8 +166,8 @@ export default function ProjectsShowcase() {
 
         {/* Projects Grid - Using ProjectCard component */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 max-w-6xl mx-auto">
+            {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
                 <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
                 <div className="bg-gray-200 rounded h-4 mb-2"></div>
@@ -175,7 +176,7 @@ export default function ProjectsShowcase() {
             ))}
           </div>
         ) : projects.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 max-w-6xl mx-auto">
             {projects.map((project, index) => (
               <ProjectCard
                 key={`${project.title}-${index}`}

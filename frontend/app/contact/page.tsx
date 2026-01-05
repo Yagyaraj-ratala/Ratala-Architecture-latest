@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail } from 'lucide-react';
-import { Typography } from '@/app/components/ui/Typography';
 import { Button } from '@/app/components/ui/Button';
+import Link from 'next/link';
+import { Typography } from '@/app/components/ui/Typography';
 
 export default function ContactPage() {
   const [fullName, setFullName] = useState('');
@@ -127,8 +128,8 @@ export default function ContactPage() {
                 </div>
               </div>
               <Typography.H3 className="text-gray-800 mb-4">Phone</Typography.H3>
-              <a 
-                href="tel:+9779851325508" 
+              <a
+                href="tel:+9779851325508"
                 className="text-gray-700 hover:text-cyan-500 transition-colors duration-300"
               >
                 <Typography.P>+977 9851325508</Typography.P>
@@ -148,8 +149,8 @@ export default function ContactPage() {
                 </div>
               </div>
               <Typography.H3 className="text-gray-800 mb-4">Email</Typography.H3>
-              <a 
-                href="mailto:info@ratalaarchitecture.com" 
+              <a
+                href="mailto:info@ratalaarchitecture.com"
                 className="text-gray-700 hover:text-cyan-500 transition-colors duration-300"
               >
                 <Typography.P>info@ratalaarchitecture.com</Typography.P>
@@ -305,11 +306,10 @@ export default function ContactPage() {
               </div>
 
               {statusMessage && (
-                <div className={`text-center text-sm p-3 rounded-lg ${
-                  statusMessage.includes('Thank you') 
-                    ? 'bg-green-50 text-green-700 border border-green-200' 
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                }`}>
+                <div className={`text-center text-sm p-3 rounded-lg ${statusMessage.includes('Thank you')
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}>
                   {statusMessage}
                 </div>
               )}

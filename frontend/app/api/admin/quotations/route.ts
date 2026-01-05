@@ -1,24 +1,19 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'ratala_architecture',
-  password: 'SYSTEM',
-  port: 5432,
-});
-
-export async function GET() {
-  let client;
+export async function GET(request: NextRequest) {
   try {
-    client = await pool.connect();
-    const result = await client.query(`SELECT * FROM public."CUSTOMER_QUOTATION" ORDER BY id DESC`);
+    // Verify authentication
+    await requireAuth(request);
+
+    const result = await db.query(`SELECT * FROM public.quotation ORDER BY id DESC`);
     return NextResponse.json(result.rows);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'Unauthorized' || error.status === 401) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error fetching quotations:', error);
     return NextResponse.json({ error: 'Failed to fetch quotations' }, { status: 500 });
-  } finally {
-    if (client) client.release();
   }
 }
