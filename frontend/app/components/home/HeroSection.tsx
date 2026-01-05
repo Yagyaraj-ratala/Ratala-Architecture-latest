@@ -239,7 +239,7 @@ export default function HomeHero() {
         .float-3d { animation: float3D 3s ease-in-out infinite; }
       `}</style>
 
-      <main className="relative h-[65vh] sm:h-[80vh] md:h-screen w-full overflow-hidden">
+      <main className="relative h-[calc(100vh-64px)] min-h-[500px] sm:h-[85vh] md:h-screen w-full overflow-hidden">
         {/* Background Images */}
         <div className="absolute inset-0">
           {slides.map((slide, index) => (
@@ -256,31 +256,31 @@ export default function HomeHero() {
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/75 via-slate-800/50 to-transparent" />
 
         {/* Content Container */}
-        <div className="relative z-10 flex items-center h-full pt-24 sm:pt-32 md:pt-40">
-          <div className="container mx-auto px-6">
+        <div className="relative z-10 flex items-center h-full px-4 sm:px-6 py-8 sm:py-12">
+          <div className="container mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
 
               {/* Left Side - Main Content */}
               <div className="text-white">
                 <h1
                   key={`title-${currentSlide}`}
-                  className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-5 sm:mb-7 bg-gradient-to-r from-white via-cyan-50 to-white bg-clip-text text-transparent leading-tight tracking-tight animate-fadeIn"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 md:mb-7 bg-gradient-to-r from-white via-cyan-50 to-white bg-clip-text text-transparent leading-tight tracking-tight animate-fadeIn"
                 >
                   {currentSlideData.title}
                 </h1>
 
                 <p
                   key={`subtitle-${currentSlide}`}
-                  className="text-base sm:text-lg md:text-xl lg:text-2xl mb-7 sm:mb-9 text-white/90 leading-relaxed font-normal animate-fadeIn delay-200"
+                  className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl mb-5 sm:mb-7 md:mb-9 text-white/90 leading-relaxed font-normal animate-fadeIn delay-200"
                 >
                   {currentSlideData.subtitle}
                 </p>
 
                 {/* Features List */}
-                <div className="mb-7 sm:mb-9 animate-fadeIn delay-300">
-                  <ul className="space-y-3 sm:space-y-3.5">
+                <div className="mb-5 sm:mb-7 md:mb-9 animate-fadeIn delay-300">
+                  <ul className="space-y-2 sm:space-y-2.5 md:space-y-3.5">
                     {currentSlideData.features.map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm sm:text-base md:text-lg text-white/95 font-medium">
+                      <li key={index} className="flex items-center text-xs sm:text-sm md:text-base lg:text-lg text-white/95 font-medium">
                         <div className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full mr-3.5 shadow-sm"></div>
                         {feature}
                       </li>
@@ -289,7 +289,7 @@ export default function HomeHero() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fadeIn delay-400">
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 md:gap-4 animate-fadeIn delay-400">
                   {currentSlideData.primaryButton && (
                     <Button
                       onClick={currentSlideData.primaryButton.action}

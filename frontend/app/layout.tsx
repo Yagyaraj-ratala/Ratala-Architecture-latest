@@ -13,22 +13,24 @@ import type { ReactNode } from "react";
 export default function RootLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
+  const isLoginRoute = pathname === '/login';
+  const shouldHideHeaderFooter = isAdminRoute || isLoginRoute;
 
   return (
     <html lang="en">
       <body>
-        {/* Only show header/footer on non-admin routes */}
-        {!isAdminRoute && <Header />}
-        
+        {/* Only show header/footer on non-admin and non-login routes */}
+        {!shouldHideHeaderFooter && <Header />}
+
         {/* Page Content */}
         <main>{children}</main>
-        
-        {/* Only show floating utilities on non-admin routes */}
-        {!isAdminRoute && <WhatsAppButton />}
-        {!isAdminRoute && <ScrollToTop />}
-        
-        {/* Only show footer on non-admin routes */}
-        {!isAdminRoute && <Footer />}
+
+        {/* Only show floating utilities on non-admin and non-login routes */}
+        {!shouldHideHeaderFooter && <WhatsAppButton />}
+        {!shouldHideHeaderFooter && <ScrollToTop />}
+
+        {/* Only show footer on non-admin and non-login routes */}
+        {!shouldHideHeaderFooter && <Footer />}
       </body>
     </html>
   );

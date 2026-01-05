@@ -227,8 +227,8 @@ const Header: React.FC = () => {
               }
             }}
             className={`flex items-center gap-1 transition-all duration-300 whitespace-nowrap px-2 ${projectsSubmenu.some(sub => isActive(sub.href))
-                ? "text-cyan-500 underline decoration-2 underline-offset-8"
-                : "hover:text-cyan-500"
+              ? "text-cyan-500 underline decoration-2 underline-offset-8"
+              : "hover:text-cyan-500"
               }`}
           >
             Projects
@@ -372,15 +372,7 @@ const Header: React.FC = () => {
         {/* Right side items */}
         <div className="flex items-center gap-3">
 
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-md text-gray-700 hover:text-cyan-500 hover:bg-gray-100 transition"
-            >
-              {isMobileMenuOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
-            </button>
-          </div>
+
 
           {/* Consistent Gradient Button - Login/Logout */}
           {isLoggedIn ? (
