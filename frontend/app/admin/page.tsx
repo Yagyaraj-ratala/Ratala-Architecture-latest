@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiEye, FiEyeOff, FiMenu } from 'react-icons/fi';
 import { getAuthToken, clearAuthData } from '@/lib/auth-storage';
 
 interface Project {
@@ -80,6 +80,18 @@ interface Blog {
     updated_at: string;
 }
 
+interface SiteSettings {
+    id?: number;
+    site_name: string;
+    contact_email: string;
+    contact_phone: string;
+    office_address: string;
+    facebook_url: string;
+    instagram_url: string;
+    linkedin_url: string;
+    meta_description: string;
+}
+
 export default function AdminPage() {
     const router = useRouter();
     const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'settings' | 'tickets' | 'contactreport' | 'quotationreport' | 'blogs'>('dashboard');
@@ -141,13 +153,37 @@ export default function AdminPage() {
         delete_image: false
     });
 
+    const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+        site_name: 'Ratala Architecture',
+        contact_email: 'info@ratalaarchitecture.com',
+        contact_phone: '+977 9851325508',
+        office_address: '1st Floor, PepsiCola-32, Kathmandu, Nepal',
+        facebook_url: '',
+        instagram_url: '',
+        linkedin_url: '',
+        meta_description: ''
+    });
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [drawingPhotos, setDrawingPhotos] = useState<File[]>([]);
     const [projectPhotos, setProjectPhotos] = useState<File[]>([]);
     const [projectVideos, setProjectVideos] = useState<File[]>([]);
 
     useEffect(() => {
+        // Restore active section from localStorage on refresh
+        const savedSection = localStorage.getItem('adminActiveSection');
+        if (savedSection && ['dashboard', 'users', 'settings', 'tickets', 'contactreport', 'quotationreport', 'blogs'].includes(savedSection)) {
+            setActiveSection(savedSection as any);
+        }
         fetchProjects();
     }, [filterStatus, filterType]);
+
+    useEffect(() => {
+        // Save active section to localStorage
+        localStorage.setItem('adminActiveSection', activeSection);
+    }, [activeSection]);
 
     useEffect(() => {
         if (activeSection === 'quotationreport') {
@@ -155,6 +191,18 @@ export default function AdminPage() {
         }
         if (activeSection === 'blogs') {
             fetchBlogs();
+        }
+        if (activeSection === 'users') {
+            fetchUsers();
+        }
+        if (activeSection === 'tickets') {
+            fetchTickets();
+        }
+        if (activeSection === 'contactreport') {
+            fetchContacts();
+        }
+        if (activeSection === 'settings') {
+            fetchSettings();
         }
     }, [activeSection]);
 
@@ -274,6 +322,56 @@ export default function AdminPage() {
             setReportError('Error loading quotations');
         } finally {
             setReportLoading(false);
+        }
+    };
+
+    const fetchSettings = async () => {
+        setSettingsLoading(true);
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+
+            const res = await fetch('/api/admin/settings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.id) {
+                    setSiteSettings(data);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch settings', err);
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleSettingsSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSettingsSaving(true);
+        try {
+            const token = getAuthToken();
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(siteSettings)
+            });
+
+            if (res.ok) {
+                alert('Settings updated successfully!');
+            } else {
+                alert('Failed to update settings');
+            }
+        } catch (err) {
+            console.error('Error updating settings', err);
+            alert('Error updating settings');
+        } finally {
+            setSettingsSaving(false);
         }
     };
 
@@ -836,41 +934,62 @@ export default function AdminPage() {
     const completedCount = projects.filter(p => p.status === 'completed').length;
 
     return (
-        <div className="flex flex-1">
-            <div className="w-64 bg-white shadow-xl h-[calc(100vh-64px)] sticky top-16 flex flex-col z-20 border-r border-gray-100">
-                <div className="p-6 border-b border-gray-100 bg-white">
-                    <h1 className="text-xl font-bold text-gray-800 text-center bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Dashboard</h1>
+        <div className="flex flex-1 relative overflow-hidden">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <div className={`
+                w-64 bg-white shadow-xl h-[calc(100vh-64px)] 
+                fixed lg:sticky top-16 left-0 
+                flex flex-col z-40 lg:z-20 border-r border-gray-100
+                transition-transform duration-300 ease-in-out
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
+                <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-gray-800 bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Dashboard</h1>
+                    <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="lg:hidden text-gray-500 hover:text-gray-700"
+                    >
+                        <FiX size={20} />
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
                     <ul className="p-4 space-y-2">
                         <li>
-                            <button onClick={() => { setActiveSection('dashboard'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'dashboard' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <button onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'dashboard' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
                                 <FiHome className="mr-3" />
                                 Dashboard
                             </button>
                         </li>
                         <li>
-                            <button onClick={() => { setActiveSection('users'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'users' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <button onClick={() => { setActiveSection('users'); setIsSidebarOpen(false); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'users' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
                                 <FiUsers className="mr-3" />
                                 Users
                             </button>
                         </li>
                         <li>
-                            <button onClick={() => { setActiveSection('tickets'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'tickets' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <button onClick={() => { setActiveSection('tickets'); setIsSidebarOpen(false); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'tickets' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
                                 <FiFileText className="mr-3" />
                                 Problem Tickets
                             </button>
                         </li>
                         <li>
-                            <button onClick={() => { setActiveSection('blogs'); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'blogs' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <button onClick={() => { setActiveSection('blogs'); setIsSidebarOpen(false); }} className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'blogs' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}>
                                 <FiFileText className="mr-3" />
                                 Blogs & Articles
                             </button>
                         </li>
                         <li>
                             <button
-                                onClick={() => setActiveSection('contactreport')}
+                                onClick={() => { setActiveSection('contactreport'); setIsSidebarOpen(false); }}
                                 className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'contactreport' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
                             >
                                 <FiFileText className="mr-3" />
@@ -880,7 +999,7 @@ export default function AdminPage() {
 
                         <li>
                             <button
-                                onClick={() => setActiveSection('quotationreport')}
+                                onClick={() => { setActiveSection('quotationreport'); setIsSidebarOpen(false); }}
                                 className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'quotationreport' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
                             >
                                 <FiFileText className="mr-3" />
@@ -888,10 +1007,13 @@ export default function AdminPage() {
                             </button>
                         </li>
                         <li>
-                            <a href="#" className="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                            <button
+                                onClick={() => { setActiveSection('settings'); setIsSidebarOpen(false); }}
+                                className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'settings' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
                                 <FiSettings className="mr-3" />
                                 Settings
-                            </a>
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -907,10 +1029,130 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            <main className="flex-1 p-8 relative z-0">
-                {activeSection === 'contactreport' ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-6">
+            <main className="flex-1 p-4 md:p-8 relative z-0">
+                {/* Mobile Menu Toggle */}
+                <div className="lg:hidden mb-4">
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-600"
+                    >
+                        <FiMenu size={24} />
+                    </button>
+                </div>
+                {activeSection === 'settings' ? (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Site Settings</h2>
+                            <button
+                                onClick={fetchSettings}
+                                className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                            >
+                                Refresh
+                            </button>
+                        </div>
+
+                        {settingsLoading ? (
+                            <div className="text-center py-12">
+                                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSettingsSubmit} className="space-y-6 max-w-4xl">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <h3 className="font-medium text-gray-900 border-b pb-2">General Information</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Site Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.site_name}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, site_name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Support Email</label>
+                                            <input
+                                                type="email"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.contact_email}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, contact_email: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Support Phone</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.contact_phone}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, contact_phone: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Office Address</label>
+                                            <textarea
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-20 text-gray-900 bg-white"
+                                                value={siteSettings.office_address}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, office_address: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h3 className="font-medium text-gray-900 border-b pb-2">Social Media & SEO</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+                                            <input
+                                                type="url"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.facebook_url}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, facebook_url: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
+                                            <input
+                                                type="url"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.instagram_url}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, instagram_url: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                                            <input
+                                                type="url"
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
+                                                value={siteSettings.linkedin_url}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, linkedin_url: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
+                                            <textarea
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-20 text-gray-900 bg-white"
+                                                value={siteSettings.meta_description}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, meta_description: e.target.value })}
+                                                placeholder="Briefly describe your site for search engines"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-6 flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={settingsSaving}
+                                        className="bg-cyan-600 text-white px-8 py-2 rounded-lg hover:bg-cyan-700 transition disabled:opacity-50"
+                                    >
+                                        {settingsSaving ? 'Saving Changes...' : 'Save Settings'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                ) : activeSection === 'contactreport' ? (
+                    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Contact Report</h2>
                             <div className="flex items-center gap-4">
                                 <button
@@ -945,32 +1187,36 @@ export default function AdminPage() {
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead>
-                                        <tr className="bg-gray-50">
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <tr className="bg-gray-50 text-[10px] sm:text-xs">
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                            <th className="hidden lg:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="sticky right-0 bg-gray-50 z-10 px-2 sm:px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider border-l border-gray-100">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {contacts.map((c) => (
-                                            <tr key={c.id}>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{c.full_name}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.email}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.phone || '-'}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{c.subject || '-'}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs" title={c.message || ''}>
+                                            <tr key={c.id} className="text-xs sm:text-sm">
+                                                <td className="px-2 sm:px-4 py-4 whitespace-nowrap font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">{c.full_name}</td>
+                                                <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{c.email}</td>
+                                                <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{c.phone || '-'}</td>
+                                                <td className="hidden lg:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{c.subject || '-'}</td>
+                                                <td className="px-2 sm:px-4 py-4 text-gray-500 max-w-[100px] sm:max-w-xs overflow-hidden">
                                                     <div className="truncate">{c.message}</div>
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-gray-500">
                                                     {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleContactDelete(c.id)} className="text-red-500 hover:text-red-700">
-                                                        <FiTrash2 size={18} />
+                                                <td className="sticky right-0 bg-white z-10 px-2 sm:px-4 py-4 whitespace-nowrap text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                    <button
+                                                        onClick={() => handleContactDelete(c.id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <FiTrash2 size={16} />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -984,8 +1230,8 @@ export default function AdminPage() {
                         )}
                     </div>
                 ) : activeSection === 'quotationreport' ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Quotation Report</h2>
                             <div className="flex items-center gap-4">
                                 <button
@@ -1020,34 +1266,36 @@ export default function AdminPage() {
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead>
-                                        <tr className="bg-gray-50">
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Type</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Budget</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <tr className="bg-gray-50 text-[10px] sm:text-xs">
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                                            <th className="hidden lg:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Budget</th>
+                                            <th className="hidden xl:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="sticky right-0 bg-gray-50 z-10 px-2 sm:px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider border-l border-gray-100">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {quotations.map((q) => (
-                                            <tr key={q.id}>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{q.full_name}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.email}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.phone}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{q.project_type}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{q.estimated_budgets}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs" title={q.project_details || ''}>
+                                            <tr key={q.id} className="text-xs sm:text-sm">
+                                                <td className="px-2 sm:px-4 py-4 whitespace-nowrap font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">{q.full_name}</td>
+                                                <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{q.email}</td>
+                                                <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-gray-500 capitalize">{q.project_type}</td>
+                                                <td className="hidden lg:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{q.estimated_budgets}</td>
+                                                <td className="hidden xl:table-cell px-4 py-4 text-gray-500 max-w-xs">
                                                     <div className="truncate">{q.project_details || '-'}</div>
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-gray-500">
                                                     {q.created_at ? new Date(q.created_at).toLocaleDateString() : '-'}
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleQuotationDelete(q.id)} className="text-red-500 hover:text-red-700">
-                                                        <FiTrash2 size={18} />
+                                                <td className="sticky right-0 bg-white z-10 px-2 sm:px-4 py-4 whitespace-nowrap text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                    <button
+                                                        onClick={() => handleQuotationDelete(q.id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <FiTrash2 size={16} />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -1061,8 +1309,8 @@ export default function AdminPage() {
                         )}
                     </div>
                 ) : activeSection === 'tickets' ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Problem Ticket Management</h2>
                             <button
                                 onClick={fetchTickets}
@@ -1086,39 +1334,33 @@ export default function AdminPage() {
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead>
-                                        <tr className="bg-gray-50">
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <tr className="bg-gray-50 text-[10px] sm:text-xs">
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                            <th className="hidden lg:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Problem</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="sticky right-0 bg-gray-50 z-10 px-2 sm:px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider border-l border-gray-100">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {tickets.map((t) => (
-                                            <tr key={t.id}>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{t.username}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{t.service_name}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title={t.problem_description}>{t.problem_description}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <select
-                                                        value={t.status}
-                                                        onChange={(e) => handleTicketStatusUpdate(t.id, e.target.value)}
-                                                        className={`text-xs font-semibold rounded px-2 py-1 outline-none border-none cursor-pointer ${t.status === 'open' ? 'bg-red-50 text-red-600' :
-                                                            t.status === 'solved' ? 'bg-green-50 text-green-600' :
-                                                                'bg-gray-100 text-gray-600'
-                                                            }`}
-                                                    >
-                                                        <option value="open">Open</option>
-                                                        <option value="solved">Solved</option>
-                                                        <option value="closed">Closed</option>
-                                                    </select>
+                                            <tr key={t.id} className="text-xs sm:text-sm">
+                                                <td className="px-2 sm:px-4 py-4 whitespace-nowrap font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">{t.username}</td>
+                                                <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-gray-500 truncate max-w-[100px] sm:max-w-none">{t.service_name}</td>
+                                                <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${t.status === 'open' ? 'bg-red-100 text-red-600' : t.status === 'solved' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {t.status}
+                                                    </span>
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(t.created_at).toLocaleDateString()}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleTicketDelete(t.id)} className="text-red-500 hover:text-red-700">
-                                                        <FiTrash2 size={18} />
+                                                <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-gray-500">{new Date(t.created_at).toLocaleDateString()}</td>
+                                                <td className="sticky right-0 bg-white z-10 px-2 sm:px-4 py-4 whitespace-nowrap text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                    <button
+                                                        onClick={() => handleTicketDelete(t.id)}
+                                                        className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <FiTrash2 size={16} />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -1132,8 +1374,8 @@ export default function AdminPage() {
                         )}
                     </div>
                 ) : activeSection === 'blogs' ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Blog Management</h2>
                             <button
                                 onClick={() => { resetBlogForm(); setShowBlogForm(true); }}
@@ -1270,39 +1512,45 @@ export default function AdminPage() {
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase text-right">Actions</th>
+                                        <tr className="text-[10px] sm:text-xs text-gray-500 border-b">
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium uppercase">Img</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium uppercase">Title</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium uppercase">Status</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left font-medium uppercase">Date</th>
+                                            <th className="sticky right-0 bg-gray-50 z-10 px-2 sm:px-4 py-3 text-right font-medium uppercase border-l border-gray-100">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {blogs.map((blog) => (
-                                            <tr key={blog.id}>
-                                                <td className="px-4 py-3">
+                                            <tr key={blog.id} className="text-xs sm:text-sm">
+                                                <td className="px-2 sm:px-4 py-3">
                                                     {blog.image_path ? (
-                                                        <img src={`/uploads/${blog.image_path}`} className="h-12 w-20 object-cover rounded" />
+                                                        <img src={`/uploads/${blog.image_path}`} className="h-10 w-16 object-cover rounded shadow-sm" />
                                                     ) : (
-                                                        <div className="h-12 w-20 bg-gray-100 rounded flex items-center justify-center text-[10px] text-gray-400">No image</div>
+                                                        <div className="h-10 w-16 bg-gray-100 rounded flex items-center justify-center text-[8px] text-gray-400 font-bold uppercase">No Img</div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{blog.title}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500">{blog.category || '-'}</td>
-                                                <td className="px-4 py-3 text-sm">
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${blog.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                <td className="px-2 sm:px-4 py-3 font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{blog.title}</td>
+                                                <td className="hidden sm:table-cell px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${blog.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                                                         {blog.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-gray-500">{new Date(blog.created_at).toLocaleDateString()}</td>
-                                                <td className="px-4 py-3 text-sm text-right">
-                                                    <div className="flex gap-3 justify-end">
-                                                        <button onClick={() => handleBlogEdit(blog)} className="text-cyan-600 hover:text-cyan-900">
+                                                <td className="hidden md:table-cell px-4 py-3 text-gray-500">{new Date(blog.created_at).toLocaleDateString()}</td>
+                                                <td className="sticky right-0 bg-white z-10 px-2 sm:px-4 py-3 text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                    <div className="flex gap-1 sm:gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => handleBlogEdit(blog)}
+                                                            className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                                                            title="Edit"
+                                                        >
                                                             <FiEdit size={16} />
                                                         </button>
-                                                        <button onClick={() => handleBlogDelete(blog.id)} className="text-red-600 hover:text-red-900">
+                                                        <button
+                                                            onClick={() => handleBlogDelete(blog.id)}
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete"
+                                                        >
                                                             <FiTrash2 size={16} />
                                                         </button>
                                                     </div>
@@ -1319,8 +1567,8 @@ export default function AdminPage() {
                         )}
                     </div>
                 ) : activeSection === 'users' ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">User Management</h2>
                             <button
                                 onClick={() => {
@@ -1403,27 +1651,37 @@ export default function AdminPage() {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead>
                                     <tr className="bg-gray-50">
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                        <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                                        <th className="sticky right-0 bg-gray-50 z-10 px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-gray-100">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {users.map((u) => (
                                         <tr key={u.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.username}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{u.role || 'user'}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button onClick={() => handleEditUser(u)} className="text-cyan-600 hover:text-cyan-900 mr-4">
-                                                    <FiEdit size={18} />
-                                                </button>
-                                                <button onClick={() => handleDeleteUser(u.id)} className="text-red-600 hover:text-red-900">
-                                                    <FiTrash2 size={18} />
-                                                </button>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.username}</td>
+                                            <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
+                                            <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{u.role || 'user'}</td>
+                                            <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
+                                            <td className="sticky right-0 bg-white z-10 px-4 py-4 whitespace-nowrap text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                <div className="flex gap-1.5 justify-end">
+                                                    <button
+                                                        onClick={() => handleEditUser(u)}
+                                                        className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                                                        title="Edit"
+                                                    >
+                                                        <FiEdit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(u.id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <FiTrash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -1435,8 +1693,8 @@ export default function AdminPage() {
                         </div>
                     </div >
                 ) : (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Project Management</h2>
                             <button
                                 onClick={() => {
@@ -1728,25 +1986,25 @@ export default function AdminPage() {
                             </div>
                         )}
 
-                        <div className="mb-4 flex gap-4">
-                            <div>
+                        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                            <div className="flex-1 min-w-[150px]">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
                                 <select
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value as any)}
-                                    className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                                 >
                                     <option value="all">All</option>
                                     <option value="ongoing">Ongoing</option>
                                     <option value="completed">Completed</option>
                                 </select>
                             </div>
-                            <div>
+                            <div className="flex-1 min-w-[150px]">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
                                 <select
                                     value={filterType}
                                     onChange={(e) => setFilterType(e.target.value as any)}
-                                    className="p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full p-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                                 >
                                     <option value="all">All</option>
                                     <option value="residential">Residential</option>
@@ -1766,68 +2024,57 @@ export default function AdminPage() {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                                {filterStatus === 'ongoing' ? 'Start Date / Progress' : 'Completed Date'}
+                                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                            <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {filterStatus === 'ongoing' ? 'Start Date' : 'Done'}
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                            <th className="sticky right-0 bg-gray-50 z-10 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase border-l border-gray-100">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {projects.map((project) => (
                                             <tr key={project.id}>
-                                                <td className="px-4 py-3">
+                                                <td className="px-2 py-3">
                                                     {project.image_path ? (
-                                                        <img src={`/uploads/${project.image_path}`} alt={project.title} className="h-16 w-24 object-cover rounded" />
+                                                        <img src={`/uploads/${project.image_path}`} alt={project.title} className="h-10 w-16 object-cover rounded" />
                                                     ) : (
-                                                        <div className="h-16 w-24 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>
+                                                        <div className="h-10 w-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400 font-medium">N/A</div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${project.status === 'ongoing' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                                                        }`}>
+                                                <td className="px-2 py-3 text-sm font-medium text-gray-900 max-w-[120px] truncate">{project.title}</td>
+                                                <td className="hidden sm:table-cell px-4 py-3 text-sm">
+                                                    <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                                                         {project.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-gray-700 capitalize">{project.project_type}</td>
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{project.title}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-700">{project.location}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500 capitalize">{project.project_type}</td>
+                                                <td className="hidden lg:table-cell px-4 py-3 text-sm text-gray-500">{project.location}</td>
+                                                <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
                                                     {project.status === 'ongoing' ? (
-                                                        <div>
-                                                            <div>{project.start_date ? new Date(project.start_date).toLocaleDateString() : '-'}</div>
-                                                            {project.progress !== null && (
-                                                                <div className="mt-1">
-                                                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                        <div className="bg-cyan-600 h-2 rounded-full" style={{ width: `${project.progress}%` }}></div>
-                                                                    </div>
-                                                                    <span className="text-xs text-gray-500">{project.progress}%</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                        <span className="text-cyan-600 font-medium">{project.progress}%</span>
                                                     ) : (
                                                         project.completed_date ? new Date(project.completed_date).toLocaleDateString() : '-'
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex gap-2">
+                                                <td className="sticky right-0 bg-white z-10 px-2 py-3 text-right border-l border-gray-100 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                                                    <div className="flex gap-1.5 justify-end">
                                                         <button
                                                             onClick={() => handleEdit(project)}
-                                                            className="text-cyan-600 hover:text-cyan-800"
+                                                            className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
                                                             title="Edit"
                                                         >
-                                                            <FiEdit />
+                                                            <FiEdit size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(project.id)}
-                                                            className="text-red-600 hover:text-red-800"
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                             title="Delete"
                                                         >
-                                                            <FiTrash2 />
+                                                            <FiTrash2 size={16} />
                                                         </button>
                                                     </div>
                                                 </td>

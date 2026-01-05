@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { Typography } from '@/app/components/ui/Typography';
 import { Button } from '@/app/components/ui/Button';
 import { setAuthTokenWithExpiration, setAuthStatus, setUserData, clearAuthData, getAuthToken } from '@/lib/auth-storage';
@@ -275,6 +275,17 @@ export default function LoginPage() {
               </Button>
             </div>
           </form>
+
+          {/* Return to Home Link */}
+          <div className="mt-6 text-center">
+            <a
+              href="/"
+              className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-cyan-600 transition-colors group"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              Return to Home
+            </a>
+          </div>
         </motion.div>
       </div>
     </div>
