@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiSettings, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiEye, FiEyeOff, FiMenu } from 'react-icons/fi';
+import { FiHome, FiUsers, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiEye, FiEyeOff, FiMenu } from 'react-icons/fi';
 import { getAuthToken, clearAuthData } from '@/lib/auth-storage';
 
 interface Project {
@@ -94,7 +94,7 @@ interface SiteSettings {
 
 export default function AdminPage() {
     const router = useRouter();
-    const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'settings' | 'tickets' | 'contactreport' | 'quotationreport' | 'blogs'>('dashboard');
+    const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'tickets' | 'contactreport' | 'quotationreport' | 'blogs'>('dashboard');
 
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [ticketsLoading, setTicketsLoading] = useState(false);
@@ -174,7 +174,7 @@ export default function AdminPage() {
     useEffect(() => {
         // Restore active section from localStorage on refresh
         const savedSection = localStorage.getItem('adminActiveSection');
-        if (savedSection && ['dashboard', 'users', 'settings', 'tickets', 'contactreport', 'quotationreport', 'blogs'].includes(savedSection)) {
+        if (savedSection && ['dashboard', 'users', 'tickets', 'contactreport', 'quotationreport', 'blogs'].includes(savedSection)) {
             setActiveSection(savedSection as any);
         }
         fetchProjects();
@@ -200,9 +200,6 @@ export default function AdminPage() {
         }
         if (activeSection === 'contactreport') {
             fetchContacts();
-        }
-        if (activeSection === 'settings') {
-            fetchSettings();
         }
     }, [activeSection]);
 
@@ -1006,15 +1003,7 @@ export default function AdminPage() {
                                 Quotation Report
                             </button>
                         </li>
-                        <li>
-                            <button
-                                onClick={() => { setActiveSection('settings'); setIsSidebarOpen(false); }}
-                                className={`w-full text-left flex items-center p-2 font-medium rounded-lg ${activeSection === 'settings' ? 'text-cyan-600 bg-cyan-50' : 'text-gray-600 hover:bg-gray-100'}`}
-                            >
-                                <FiSettings className="mr-3" />
-                                Settings
-                            </button>
-                        </li>
+
                     </ul>
                 </div>
 
@@ -1039,118 +1028,7 @@ export default function AdminPage() {
                         <FiMenu size={24} />
                     </button>
                 </div>
-                {activeSection === 'settings' ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800">Site Settings</h2>
-                            <button
-                                onClick={fetchSettings}
-                                className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
-                            >
-                                Refresh
-                            </button>
-                        </div>
-
-                        {settingsLoading ? (
-                            <div className="text-center py-12">
-                                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mx-auto"></div>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSettingsSubmit} className="space-y-6 max-w-4xl">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <h3 className="font-medium text-gray-900 border-b pb-2">General Information</h3>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Site Name</label>
-                                            <input
-                                                type="text"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.site_name}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, site_name: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Support Email</label>
-                                            <input
-                                                type="email"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.contact_email}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, contact_email: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Support Phone</label>
-                                            <input
-                                                type="text"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.contact_phone}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, contact_phone: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Office Address</label>
-                                            <textarea
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-20 text-gray-900 bg-white"
-                                                value={siteSettings.office_address}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, office_address: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <h3 className="font-medium text-gray-900 border-b pb-2">Social Media & SEO</h3>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
-                                            <input
-                                                type="url"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.facebook_url}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, facebook_url: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
-                                            <input
-                                                type="url"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.instagram_url}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, instagram_url: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
-                                            <input
-                                                type="url"
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none text-gray-900 bg-white"
-                                                value={siteSettings.linkedin_url}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, linkedin_url: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
-                                            <textarea
-                                                className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 outline-none h-20 text-gray-900 bg-white"
-                                                value={siteSettings.meta_description}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, meta_description: e.target.value })}
-                                                placeholder="Briefly describe your site for search engines"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="border-t pt-6 flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={settingsSaving}
-                                        className="bg-cyan-600 text-white px-8 py-2 rounded-lg hover:bg-cyan-700 transition disabled:opacity-50"
-                                    >
-                                        {settingsSaving ? 'Saving Changes...' : 'Save Settings'}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
-                ) : activeSection === 'contactreport' ? (
+                {activeSection === 'contactreport' ? (
                     <div className="bg-white rounded-lg shadow p-4 md:p-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">Contact Report</h2>
@@ -1337,7 +1215,7 @@ export default function AdminPage() {
                                         <tr className="bg-gray-50 text-[10px] sm:text-xs">
                                             <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">User</th>
                                             <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                                            <th className="hidden lg:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Problem</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Problem</th>
                                             <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                             <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                             <th className="sticky right-0 bg-gray-50 z-10 px-2 sm:px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider border-l border-gray-100">Actions</th>
@@ -1348,6 +1226,9 @@ export default function AdminPage() {
                                             <tr key={t.id} className="text-xs sm:text-sm">
                                                 <td className="px-2 sm:px-4 py-4 whitespace-nowrap font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">{t.username}</td>
                                                 <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-gray-500 truncate max-w-[100px] sm:max-w-none">{t.service_name}</td>
+                                                <td className="px-2 sm:px-4 py-4 text-gray-500 max-w-[120px] sm:max-w-xs">
+                                                    <div className="truncate" title={t.problem_description}>{t.problem_description}</div>
+                                                </td>
                                                 <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap">
                                                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${t.status === 'open' ? 'bg-red-100 text-red-600' : t.status === 'solved' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`}>
                                                         {t.status}
