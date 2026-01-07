@@ -154,6 +154,7 @@ const Header: React.FC = () => {
     { href: "/", label: "Home" },
     { href: "/about", label: "About Us" },
     { href: "/services", label: "Services" },
+    { href: "/ai-designer", label: "AI Designer" },
     { href: "/cost-calculator", label: "Cost Calculator" },
     { href: "/blogs", label: "Blogs & Articles" },
     { href: "/contact", label: "Contact" },
@@ -167,9 +168,9 @@ const Header: React.FC = () => {
 
 
   const NavigationLinks = ({ isSticky = false }) => {
-    const servicesIndex = navItems.findIndex(item => item.href === "/services");
-    const beforeProjects = navItems.slice(0, servicesIndex + 1);
-    const afterProjects = navItems.slice(servicesIndex + 1);
+    const aiDesignerIndex = navItems.findIndex(item => item.href === "/ai-designer");
+    const beforeProjects = navItems.slice(0, aiDesignerIndex + 1);
+    const afterProjects = navItems.slice(aiDesignerIndex + 1);
 
     return (
       <ul className="flex flex-wrap items-center justify-center gap-4 md:gap-6 font-semibold text-gray-800 tracking-wide text-base lg:text-lg">
@@ -358,11 +359,13 @@ const Header: React.FC = () => {
         </div>
 
         {/* Logo */}
-        <img
-          src="/logo.png"
-          alt="Ratala Logo"
-          className="h-14 sm:h-20 lg:h-24 w-auto object-contain logo-glow transition-transform hover:scale-105"
-        />
+        <Link href="/" className="cursor-pointer">
+          <img
+            src="/logo.png"
+            alt="Ratala Logo"
+            className="h-14 sm:h-20 lg:h-24 w-auto object-contain logo-glow transition-transform hover:scale-105"
+          />
+        </Link>
 
         {/* Desktop Nav */}
         <div className="hidden lg:flex justify-center flex-1">
