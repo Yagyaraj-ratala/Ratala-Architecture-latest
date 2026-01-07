@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin } from "lucide-react";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaTiktok } from "react-icons/fa";
 import { Typography } from "@/app/components/ui/Typography";
 
 export default function Footer() {
@@ -26,7 +26,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 pb-12">
-          
+
           {/* === Logo & About === */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -122,8 +122,8 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-3">
                 <Phone size={18} className="text-cyan-500 flex-shrink-0" />
-                <a 
-                  href="tel:+9779851325508" 
+                <a
+                  href="tel:+9779851325508"
                   className="text-gray-700 text-sm hover:text-cyan-500 transition-colors duration-300"
                 >
                   +977 9851325508
@@ -131,8 +131,8 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-3">
                 <Mail size={18} className="text-cyan-500 flex-shrink-0" />
-                <a 
-                  href="mailto:info@ratalaarchitecture.com" 
+                <a
+                  href="mailto:info@ratalaarchitecture.com"
                   className="text-gray-700 text-sm hover:text-cyan-500 transition-colors duration-300"
                 >
                   info@ratalaarchitecture.com
@@ -147,32 +147,39 @@ export default function Footer() {
               </Typography.H3>
               <div className="flex items-center gap-4">
                 <a
-                  href="#"
+                  href="https://www.facebook.com/ratalaarchitecture"
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
                   aria-label="Facebook"
                 >
                   <FaFacebookF className="w-5 h-5" />
                 </a>
                 <a
-                  href="#"
+                  href="https://youtube.com/@ratalaarchitecture?si=sUsirYseceM6lP_b"
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
                   aria-label="YouTube"
                 >
                   <FaYoutube className="w-5 h-5" />
                 </a>
                 <a
-                  href="#"
+                  href="https://www.linkedin.com/company/ratala-architecture-and-interiors/"
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
                   aria-label="LinkedIn"
                 >
                   <FaLinkedinIn className="w-5 h-5" />
                 </a>
                 <a
-                  href="#"
+                  href="https://www.instagram.com/ratala_architecture_n_interior?igsh=aHptN3ZmczIzM3Rs"
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
                   aria-label="Instagram"
                 >
                   <FaInstagram className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.tiktok.com/@ratalaarchitectur508?_r=1&_t=ZS-92s2gjs2DNU"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-500 hover:text-white transition-all duration-300 hover:scale-110"
+                  aria-label="TikTok"
+                >
+                  <FaTiktok className="w-5 h-5" />
                 </a>
               </div>
             </div>
