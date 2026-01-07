@@ -258,13 +258,13 @@ export default function HomeHero() {
         {/* Content Container */}
         <div className="relative z-10 flex items-center h-full px-4 sm:px-6 py-8 sm:py-12">
           <div className="container mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
 
               {/* Left Side - Main Content */}
-              <div className="text-white">
+              <div className="text-white lg:col-span-7">
                 <h1
                   key={`title-${currentSlide}`}
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 md:mb-7 bg-gradient-to-r from-white via-cyan-50 to-white bg-clip-text text-transparent leading-tight tracking-tight animate-fadeIn"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl font-extrabold mb-4 sm:mb-6 md:mb-7 bg-gradient-to-r from-white via-cyan-50 to-white bg-clip-text text-transparent leading-snug tracking-tight py-2 animate-fadeIn"
                 >
                   {currentSlideData.title}
                 </h1>
@@ -310,7 +310,7 @@ export default function HomeHero() {
               </div>
 
               {/* Right Side - CTA Card (hidden on mobile) */}
-              <div className="hidden lg:block animate-fadeIn delay-500">
+              <div className="hidden lg:block lg:col-span-5 animate-fadeIn delay-500">
                 <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/30 shadow-2xl">
                   <div className="text-center mb-6">
                     <h3 className="text-2xl font-bold text-white mb-2.5 tracking-tight">Start Your Dream Project</h3>

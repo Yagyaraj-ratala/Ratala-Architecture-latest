@@ -11,12 +11,13 @@ import {
   Camera,
   Phone,
   Mail,
-  Facebook,
   Instagram,
   MessageSquare,
   AlertCircle,
+  Tiktok,
   CheckCircle2,
 } from "lucide-react";
+import { FaTiktok } from "react-icons/fa";
 import { ServiceCard } from "@/app/components/ui/Card";
 import { getUserData, getAuthToken } from "@/lib/auth-storage";
 
@@ -108,7 +109,8 @@ export default function ServicesPage() {
       contactNumber: "+977 9851000006",
       email: "landscape@ratala.com",
       facebook: "https://facebook.com/ratala.landscape",
-      instagram: "https://instagram.com/ratala.landscape"
+      instagram: "https://instagram.com/ratala.landscape",
+      tiktok: "https://www.tiktok.com/@ratalaarchitecture"
     },
   ];
 
@@ -172,6 +174,7 @@ export default function ServicesPage() {
                       email={service.email}
                       facebook={service.facebook}
                       instagram={service.instagram}
+                      tiktok={service.tiktok || "https://www.tiktok.com/@ratalaarchitecture"}
                     />
                   )}
                 </div>
@@ -198,6 +201,7 @@ function ContactReveal({
   email: string;
   facebook: string;
   instagram: string;
+  tiktok: string;
 }) {
   const [show, setShow] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -360,6 +364,10 @@ function ContactReveal({
                     <a href={instagram} target="_blank" rel="noopener noreferrer" className="p-1 px-2.5 rounded-md bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors flex items-center gap-1.5 text-[11px] font-semibold">
                       <Instagram className="w-3 h-3" />
                       IG
+                    </a>
+                    <a href={tiktok} target="_blank" rel="noopener noreferrer" className="p-1 px-2.5 rounded-md bg-gray-50 text-gray-800 hover:bg-gray-100 transition-colors flex items-center gap-1.5 text-[11px] font-semibold">
+                      <FaTiktok className="w-3 h-3" />
+                      TK
                     </a>
                   </div>
                 </div>
