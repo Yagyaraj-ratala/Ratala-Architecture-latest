@@ -11,6 +11,7 @@ import chromadb
 from datetime import datetime
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
@@ -52,19 +53,77 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[Message]
-    model: str = "llama3.1"
+    model: str = "qwen2.5-coder:0.5b"
     conversation_id: Optional[str] = None
 
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 
 # --- RAG Setup ---
 print("Initializing RAG system...")
+LAST_LOAD_TIME = 0
+
+def load_data_to_chroma(force=False):
+    global LAST_LOAD_TIME
+    try:
+        DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "company_info.txt")
+        if not os.path.exists(DATA_FILE):
+            print(f"⚠ Warning: Data file not found at {DATA_FILE}")
+            return False
+            
+        mtime = os.path.getmtime(DATA_FILE)
+        if not force and mtime <= LAST_LOAD_TIME:
+            return True # Already up to date
+            
+        print(f"🔄 Loading/Updating company knowledge from {DATA_FILE}...")
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            text = f.read()
+        
+        # Split by section separators (lines of ===)
+        # We look for lines that are just or mostly equals signs
+        parts = re.split(r'\n={10,}\n', text)
+        chunks = []
+        
+        current_chunk = ""
+        for part in parts:
+            part = part.strip()
+            if not part: continue
+            
+            # If the part is short (likely a header), start a new chunk or append if we just started one
+            if len(part) < 100:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = part + "\n"
+            else:
+                current_chunk += part + "\n"
+        
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        if chunks:
+             # Clear existing collection to avoid stale data from previous versions
+             try:
+                 all_docs = collection.get()
+                 if all_docs['ids']:
+                     collection.delete(ids=all_docs['ids'])
+                     print(f"Cleared {len(all_docs['ids'])} old documents.")
+             except Exception as e:
+                 print(f"Note: Could not clear collection (might be empty): {e}")
+
+             ids = [f"doc_{i}" for i in range(len(chunks))]
+             collection.upsert(documents=chunks, ids=ids)
+             LAST_LOAD_TIME = mtime
+             print(f"✓ Loaded {len(chunks)} document sections into Vector DB.")
+             return True
+    except Exception as e:
+        print(f"✗ Error loading data: {e}")
+        return False
+
 try:
-    # 1. Initialize ChromaDB with default embedding function
-    chroma_client = chromadb.Client()
+    # 1. Initialize ChromaDB with persistence
+    CHROMA_DATA_PATH = os.path.join(os.path.dirname(__file__), "chroma_db")
+    chroma_client = chromadb.PersistentClient(path=CHROMA_DATA_PATH)
     
-    # Use default embedding function (avoids TensorFlow/Keras issues)
-    # ChromaDB will use its built-in embedding model
+    # Use default embedding function
     default_ef = embedding_functions.DefaultEmbeddingFunction()
     
     collection = chroma_client.get_or_create_collection(
@@ -72,41 +131,8 @@ try:
         embedding_function=default_ef
     )
 
-    # 2. Load Company Data
-    DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "company_info.txt")
-    
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            text = f.read()
-        
-        # 3. Improved chunking - split by section headers (===)
-        # This preserves semantic sections from the company info document
-        sections = text.split('================================')
-        chunks = []
-        
-        for section in sections:
-            section = section.strip()
-            if section and len(section) > 20:  # Filter out very short chunks
-                chunks.append(section)
-        
-        documents = chunks
-        
-        if documents:
-             # Need unique IDs
-             ids = [f"doc_{i}" for i in range(len(documents))]
-             
-             # Upsert documents into collection
-             try:
-                 collection.upsert(
-                     documents=documents,
-                     ids=ids
-                 )
-                 print(f"✓ Loaded {len(documents)} document sections into Vector DB.")
-             except Exception as load_err:
-                 print(f"✗ Error upserting documents: {load_err}")
-
-    else:
-        print(f"⚠ Warning: Data file not found at {DATA_FILE}")
+    # Initial load
+    load_data_to_chroma()
 
 except Exception as e:
     print(f"✗ Failed to initialize RAG: {e}")
@@ -115,6 +141,10 @@ except Exception as e:
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
+        # Check for knowledge updates before querying
+        if collection:
+            load_data_to_chroma()
+            
         user_message = request.messages[-1].content
         conversation_id = request.conversation_id or "default"
         
@@ -153,9 +183,20 @@ async def chat(request: ChatRequest):
                 print(f"Retrieved Context: {context_str}")
 
         # 4. Construct System Prompt with Context
-        system_message_content = "You are Ratala AI's helpful assistant."
+        system_message_content = (
+            "You are Ratala AI, a helpful and professional assistant for Ratala Architecture and Interiors. "
+            "Your goal is to provide accurate information based on the company knowledge provided. "
+        )
+        
         if context_str:
-            system_message_content += f"\n\nUse the following context to answer the user's question if relevant:\n{context_str}\n\nIf the answer is not in the context, answer generally but mention you don't have specific company info on that."
+            system_message_content += (
+                f"\n\nCOMMAND: Use the following COMPANY CONTEXT to answer the user's query accurately. "
+                "If the information is available in the context, prioritize it. "
+                "If the answer is not in the context, answer generally and politely mention that you don't have that specific company detail.\n\n"
+                f"--- COMPANY CONTEXT ---\n{context_str}\n-----------------------"
+            )
+        else:
+            system_message_content += "\n\nNote: No specific company context was found for this query, so provide a general helpful response."
 
         # 5. Prepare final messages for Ollama (System + History)
         # We use the history from DB as the primary context
@@ -204,4 +245,37 @@ async def chat(request: ChatRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "rag_initialized": collection is not None,
+        "last_load_time": datetime.fromtimestamp(LAST_LOAD_TIME).isoformat() if LAST_LOAD_TIME > 0 else None
+    }
+
+class TestRAGRequest(BaseModel):
+    query: str
+    n_results: int = 3
+
+@app.post("/api/test-rag")
+async def test_rag_endpoint(request: TestRAGRequest):
+    if not collection:
+        raise HTTPException(status_code=500, detail="RAG system not initialized")
+    
+    try:
+        results = collection.query(
+            query_texts=[request.query],
+            n_results=request.n_results
+        )
+        return {
+            "query": request.query,
+            "results": results['documents'][0] if results and results['documents'] else []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/reload-rag")
+async def reload_rag():
+    success = load_data_to_chroma(force=True)
+    if success:
+        return {"message": "RAG data reloaded successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to reload RAG data")

@@ -17,3 +17,20 @@ public/uploads/
 *.log
 package-lock.json
 /.parcel-cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Databases and Vector Stores
+Backend/chat_history.db
+Backend/chroma_db/
+
+# Local env
+.env.local
