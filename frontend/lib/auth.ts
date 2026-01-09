@@ -15,6 +15,7 @@ export interface AuthUser {
   userId: string;
   email: string;
   username: string;
+  role?: string;
 }
 
 /**
@@ -67,7 +68,7 @@ export async function verifyToken(request: Request | NextRequest): Promise<AuthU
 
     // Verify user still exists in database
     const user = await db.oneOrNone(
-      'SELECT id, email, username FROM public."sign_in" WHERE id = $1',
+      'SELECT id, email, username, role FROM public."sign_in" WHERE id = $1',
       [decoded.userId]
     );
 
@@ -80,6 +81,7 @@ export async function verifyToken(request: Request | NextRequest): Promise<AuthU
       userId: user.id.toString(),
       email: user.email,
       username: user.username || user.email, // Use real username if available
+      role: user.role,
     };
   } catch (error: any) {
     console.error('Auth: Unexpected error in verifyToken:', error.message);
