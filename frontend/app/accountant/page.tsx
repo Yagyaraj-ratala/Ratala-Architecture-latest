@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiDollarSign, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiMenu, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import { FiDollarSign, FiFileText, FiLogOut, FiPlus, FiEdit, FiTrash2, FiX, FiMenu, FiTrendingUp, FiTrendingDown, FiPrinter } from 'react-icons/fi';
 import { getAuthToken, clearAuthData, getUserData } from '@/lib/auth-storage';
 
 // Types
@@ -398,6 +398,783 @@ export default function AccountantPage() {
         }
     };
 
+    // Print individual expenditure bill
+    const handlePrintExpenditureBill = (expenditure: Expenditure) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Please allow popups to print the bill');
+            return;
+        }
+
+        const currentDate = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        const billNumber = `INV-EXP-${expenditure.id.toString().padStart(5, '0')}`;
+
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Expenditure Invoice - ${expenditure.slno}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            padding: 40px;
+            background: white;
+            color: #000;
+            line-height: 1.6;
+        }
+        
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #000;
+            padding: 0;
+        }
+        
+        .header {
+            border-bottom: 2px solid #000;
+            padding: 30px;
+            background: #f8f8f8;
+        }
+        
+        .header-content {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            background: white;
+        }
+        
+        .company-info {
+            text-align: right;
+        }
+        
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+        
+        .company-tagline {
+            font-size: 12px;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+        
+        .company-address {
+            font-size: 11px;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .invoice-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #000;
+            margin: 25px 0;
+            padding: 15px;
+            background: #000;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .invoice-details {
+            padding: 0 30px;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        
+        .detail-section h3 {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 11px;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .detail-value {
+            color: #000;
+            text-align: right;
+        }
+        
+        .items-section {
+            padding: 0 30px;
+            margin: 20px 0;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #000;
+        }
+        
+        .items-table th {
+            background: #000;
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 1px solid #000;
+        }
+        
+        .items-table td {
+            padding: 12px 10px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+        }
+        
+        .items-table tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .amount-section {
+            padding: 0 30px 30px;
+            margin-top: 20px;
+        }
+        
+        .amount-table {
+            width: 350px;
+            float: right;
+            border: 1px solid #000;
+        }
+        
+        .amount-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+            font-size: 12px;
+        }
+        
+        .amount-row.total {
+            background: #000;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        }
+        
+        .footer {
+            clear: both;
+            padding: 30px;
+            border-top: 2px solid #000;
+            margin-top: 40px;
+        }
+        
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            margin: 40px 0 30px;
+        }
+        
+        .signature-box {
+            text-align: center;
+        }
+        
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 70px;
+            padding-top: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .stamp-area {
+            border: 2px solid #000;
+            padding: 30px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #666;
+            margin: 20px 0;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .footer-note {
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            margin-top: 20px;
+            font-style: italic;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        
+        .watermark {
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            margin-top: 10px;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            .invoice-container {
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <div class="header-content">
+                <div>
+                    <img src="/logo.png" alt="Ratala Architecture" class="logo" />
+                </div>
+                <div class="company-info">
+                    <div class="company-name">RATALA ARCHITECTURE</div>
+                    <div class="company-tagline">Building Dreams, Creating Realities</div>
+                    <div class="company-address">
+                        Kathmandu, Nepal<br>
+                        Email: info@ratalaarchitecture.com<br>
+                        Phone: +977-XXXXXXXXXX<br>
+                        PAN: XXXXXXXXX
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="invoice-title">EXPENDITURE INVOICE</div>
+        
+        <div class="invoice-details">
+            <div class="details-grid">
+                <div class="detail-section">
+                    <h3>Invoice Details</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Invoice Number:</span>
+                        <span class="detail-value">${billNumber}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reference No.:</span>
+                        <span class="detail-value">${expenditure.slno}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Invoice Date:</span>
+                        <span class="detail-value">${new Date(expenditure.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Generated On:</span>
+                        <span class="detail-value">${currentDate}</span>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h3>Project Information</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Project Name:</span>
+                        <span class="detail-value">${expenditure.projectName}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Location:</span>
+                        <span class="detail-value">${expenditure.location}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Prepared By:</span>
+                        <span class="detail-value">${userName}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="items-section">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">DESCRIPTION</th>
+                        <th style="width: 12%; text-align: center;">QTY</th>
+                        <th style="width: 12%; text-align: center;">UNIT</th>
+                        <th style="width: 13%; text-align: right;">RATE (NPR)</th>
+                        <th style="width: 13%; text-align: right;">AMOUNT (NPR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>${expenditure.itemDescription}</strong></td>
+                        <td style="text-align: center;">${expenditure.qty}</td>
+                        <td style="text-align: center;">${expenditure.unit.toUpperCase()}</td>
+                        <td style="text-align: right;">${expenditure.rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;"><strong>${expenditure.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="amount-section">
+            <div class="amount-table">
+                <div class="amount-row">
+                    <span>Subtotal:</span>
+                    <span>NPR ${expenditure.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div class="amount-row total">
+                    <span>TOTAL AMOUNT:</span>
+                    <span>NPR ${expenditure.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="stamp-area">
+                FOR RATALA ARCHITECTURE<br>
+                AUTHORIZED SIGNATURE & COMPANY SEAL
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div class="signature-line">Prepared By<br>${userName}</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line">Approved By<br>Authorized Signatory</div>
+                </div>
+            </div>
+            
+            <div class="footer-note">
+                This is a computer-generated invoice and is valid without signature.<br>
+                For any queries, please contact us at info@ratalaarchitecture.com
+            </div>
+            <div class="watermark">
+                Invoice generated on ${currentDate}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+            }, 250);
+        };
+    };
+
+    // Print individual payment/receipt bill
+    const handlePrintPaymentBill = (payment: Payment) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Please allow popups to print the bill');
+            return;
+        }
+
+        const currentDate = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        const billNumber = `${payment.type.toUpperCase()}-BILL-${payment.id}-${Date.now()}`;
+        const isPayment = payment.type === 'payment';
+
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${isPayment ? 'Payment' : 'Receipt'} Bill - ${payment.id}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            background: white;
+            color: #000;
+        }
+        
+        .bill-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 2px solid ${isPayment ? '#f97316' : '#10b981'};
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid ${isPayment ? '#f97316' : '#10b981'};
+        }
+        
+        .logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 15px;
+        }
+        
+        .company-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: #06b6d4;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+        
+        .company-tagline {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .company-address {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .bill-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin: 20px 0;
+            text-transform: uppercase;
+            background: ${isPayment ? 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)'};
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .bill-type-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: ${isPayment ? '#fee2e2' : '#d1fae5'};
+            color: ${isPayment ? '#991b1b' : '#065f46'};
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        
+        .bill-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .info-group {
+            margin-bottom: 10px;
+        }
+        
+        .info-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: #000;
+            font-weight: 500;
+        }
+        
+        .payment-details {
+            margin: 30px 0;
+            padding: 25px;
+            background: ${isPayment ? '#fff7ed' : '#f0fdf4'};
+            border-left: 5px solid ${isPayment ? '#f97316' : '#10b981'};
+            border-radius: 8px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .detail-value {
+            color: #000;
+        }
+        
+        .amount-highlight {
+            margin: 30px 0;
+            padding: 25px;
+            background: ${isPayment ? 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)'};
+            color: white;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .amount-label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .amount-value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        
+        .description-box {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .description-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .description-text {
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 40px 0 20px;
+        }
+        
+        .signature-box {
+            text-align: center;
+        }
+        
+        .signature-line {
+            border-top: 2px solid #000;
+            margin-top: 60px;
+            padding-top: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        .stamp-box {
+            border: 2px dashed ${isPayment ? '#f97316' : '#10b981'};
+            padding: 40px;
+            text-align: center;
+            color: ${isPayment ? '#f97316' : '#10b981'};
+            font-size: 12px;
+            margin: 20px 0;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            .bill-container {
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bill-container">
+        <div class="header">
+            <img src="/logo.png" alt="Ratala Architecture" class="logo" />
+            <div class="company-name">RATALA ARCHITECTURE</div>
+            <div class="company-tagline">Building Dreams, Creating Realities</div>
+            <div class="company-address">
+                Kathmandu, Nepal<br>
+                Email: info@ratalaarchitecture.com | Phone: +977-XXXXXXXXXX
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <span class="bill-type-badge">${isPayment ? '💸 PAYMENT VOUCHER' : '💰 RECEIPT VOUCHER'}</span>
+        </div>
+        
+        <div class="bill-title">${isPayment ? '💳 Payment Bill' : '🧾 Receipt Bill'}</div>
+        
+        <div class="bill-info">
+            <div>
+                <div class="info-group">
+                    <div class="info-label">Bill Number</div>
+                    <div class="info-value">${billNumber}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Transaction ID</div>
+                    <div class="info-value">#${payment.id}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Date</div>
+                    <div class="info-value">${new Date(payment.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                </div>
+            </div>
+            <div>
+                <div class="info-group">
+                    <div class="info-label">${isPayment ? 'Paid To' : 'Received From'}</div>
+                    <div class="info-value">${payment.labourName}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Site/Project</div>
+                    <div class="info-value">${payment.siteName}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Generated On</div>
+                    <div class="info-value">${currentDate}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="amount-highlight">
+            <div class="amount-label">${isPayment ? 'AMOUNT PAID' : 'AMOUNT RECEIVED'}</div>
+            <div class="amount-value">NPR ${payment.payAmount.toLocaleString()}</div>
+        </div>
+        
+        ${payment.description ? `
+        <div class="description-box">
+            <div class="description-label">Description / Remarks</div>
+            <div class="description-text">${payment.description}</div>
+        </div>
+        ` : ''}
+        
+        <div class="payment-details">
+            <div class="detail-row">
+                <span class="detail-label">Transaction Type:</span>
+                <span class="detail-value">${isPayment ? 'Payment (Outgoing)' : 'Receipt (Incoming)'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">${isPayment ? 'Payee Name:' : 'Payer Name:'}</span>
+                <span class="detail-value">${payment.labourName}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Project/Site:</span>
+                <span class="detail-value">${payment.siteName}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value"><strong>NPR ${payment.payAmount.toLocaleString()}</strong></span>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="stamp-box">
+                COMPANY SEAL / STAMP
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div class="signature-line">${isPayment ? 'Paid By' : 'Received By'}<br>${userName}</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line">Authorized Signature</div>
+                </div>
+            </div>
+            
+            <div class="footer-note">
+                This is a computer-generated ${isPayment ? 'payment' : 'receipt'} voucher and does not require a physical signature.<br>
+                For any queries, please contact us at info@ratalaarchitecture.com
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+            }, 250);
+        };
+    };
+
     // Calculate totals
     const totalExpenditure = expenditures.reduce((sum, exp) => sum + exp.total, 0);
     const totalPayments = payments.filter(p => p.type === 'payment').reduce((sum, pay) => sum + pay.payAmount, 0);
@@ -778,6 +1555,13 @@ export default function AccountantPage() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     <div className="flex gap-2">
                                                         <button
+                                                            onClick={() => handlePrintExpenditureBill(exp)}
+                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                            title="Print Bill"
+                                                        >
+                                                            <FiPrinter className="w-4 h-4" />
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleEditExpenditure(exp)}
                                                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                             title="Edit"
@@ -979,6 +1763,13 @@ export default function AccountantPage() {
                                                 <td className="px-6 py-4 text-sm text-gray-600">{pay.description || '-'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handlePrintPaymentBill(pay)}
+                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                            title="Print Bill"
+                                                        >
+                                                            <FiPrinter className="w-4 h-4" />
+                                                        </button>
                                                         <button
                                                             onClick={() => handleEditPayment(pay)}
                                                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
