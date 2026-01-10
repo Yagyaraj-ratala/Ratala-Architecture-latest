@@ -18,9 +18,10 @@ function FloatingAIButton() {
   const pathname = usePathname();
   const isAIDesignerRoute = pathname === '/ai-designer';
   const isAdminRoute = pathname?.startsWith('/admin');
+  const isAccountantRoute = pathname?.startsWith('/accountant');
   const isLoginRoute = pathname === '/login';
 
-  if (isAIDesignerRoute || isAdminRoute || isLoginRoute) return null;
+  if (isAIDesignerRoute || isAdminRoute || isAccountantRoute || isLoginRoute) return null;
 
   return (
     <button
@@ -39,31 +40,32 @@ function FloatingAIButton() {
 export default function RootLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
+  const isAccountantRoute = pathname?.startsWith('/accountant');
   const isLoginRoute = pathname === '/login';
   const isAIDesignerRoute = pathname === '/ai-designer';
-  const shouldHideHeaderFooter = isAdminRoute || isLoginRoute;
+  const shouldHideHeaderFooter = isAdminRoute || isAccountantRoute || isLoginRoute;
   const shouldHideFooter = shouldHideHeaderFooter || isAIDesignerRoute;
 
   return (
     <html lang="en">
       <body>
         <ChatbotProvider>
-          {/* Only show header/footer on non-admin and non-login routes */}
+          {/* Only show header/footer on non-admin, non-accountant and non-login routes */}
           {!shouldHideHeaderFooter && <Header />}
 
           {/* Page Content */}
           <main>{children}</main>
 
-          {/* Only show floating utilities on non-admin and non-login routes */}
+          {/* Only show floating utilities on non-admin, non-accountant and non-login routes */}
           {!shouldHideFooter && <WhatsAppButton />}
           <FloatingAIButton />
           {!shouldHideFooter && <ScrollToTop />}
 
-          {/* Only show footer on non-admin and non-login routes */}
+          {/* Only show footer on non-admin, non-accountant and non-login routes */}
           {!shouldHideFooter && <Footer />}
 
-          {/* Ratala AI Chatbot */}
-          <RatalaAI />
+          {/* Ratala AI Chatbot - hide on accountant routes */}
+          {!isAccountantRoute && <RatalaAI />}
         </ChatbotProvider>
       </body>
     </html>

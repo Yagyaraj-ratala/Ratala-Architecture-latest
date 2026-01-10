@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { Typography } from '@/app/components/ui/Typography';
 import { Button } from '@/app/components/ui/Button';
-import { setAuthTokenWithExpiration, setAuthStatus, setUserData, clearAuthData, getAuthToken } from '@/lib/auth-storage';
+import { setAuthTokenWithExpiration, setAuthStatus, setUserData, clearAuthData, getAuthToken, getUserData } from '@/lib/auth-storage';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,9 +17,10 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Redirect to admin if already authenticated
+  // Redirect to appropriate dashboard if already authenticated
   useEffect(() => {
     const token = getAuthToken();
+    const userData = getUserData();
     if (token) {
       // Verify token is still valid
       fetch('/api/auth/verify', {
@@ -29,7 +30,9 @@ export default function LoginPage() {
       })
         .then((res) => {
           if (res.ok) {
-            router.replace('/admin');
+            // Redirect based on user role
+            const redirectPath = userData?.role === 'accountant' ? '/accountant' : '/admin';
+            router.replace(redirectPath);
           } else {
             // Token is invalid, clear it
             clearAuthData();
@@ -93,9 +96,11 @@ export default function LoginPage() {
           throw new Error('Authentication token was not persisted. Please try again.');
         }
 
+        // Route based on user role
         // Use window.location for a hard redirect to ensure it works
-        // This ensures the page fully reloads and the admin layout can verify the token
-        window.location.href = '/admin';
+        // This ensures the page fully reloads and the layout can verify the token
+        const redirectPath = data.user.role === 'accountant' ? '/accountant' : '/admin';
+        window.location.href = redirectPath;
         return; // Don't set loading to false as we're redirecting
       } else {
         // Login failed - show error
